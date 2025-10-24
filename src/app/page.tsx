@@ -5,8 +5,8 @@ import { Scale, Clock, Calculator, FileText, Calendar, ShieldAlert } from "lucid
 
 export default function Home() {
   // Estados semánticos reemplazando true/false
-  const accesoAutorizado = "SI"; // antes era true
-  const modoMantenimiento = "NO"; // antes era false
+  const accesoAutorizado = "SI";
+  const modoMantenimiento = "NO";
 
   return (
     <div className="min-h-screen">
@@ -96,7 +96,7 @@ export default function Home() {
 
           {/* Prescripción Penal */}
           <Link href="/prescripcion">
-            <Card className="border-border-gray bg-card hover:border-blue-lex transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
+            <Card className="border-border-gray bg-card hover:border-blue-lex transition-all duración-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
               <CardHeader>
                 <div className="w-12 h-12 bg-blue-lex/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-lex/20 transition-colors">
                   <Clock className="w-6 h-6 text-blue-lex" />
