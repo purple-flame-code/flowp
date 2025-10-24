@@ -1,0 +1,18 @@
+CODIGO PROCESAL PENAL DE PANAMÁ — EXTRACTO ANALÍTICO (para FlowPenal)
+Fuente PDF: CODIGO-PROCESAL-PENAL-Comentado-COMPLETO-20-AGO-2018_LIGHT.pdf
+Nota: Este archivo NO contiene texto legal literal; es un resumen funcional para cálculos y lógicas de la app.
+
+Arts. 91–93 — Prescripción de la acción penal
+  Aplicación: Prescripción. Bases, suspensión y actos interruptivos en el SPA.
+
+Art. 221 — Medidas cautelares personales
+  Aplicación: Audiencias/Recursos. Requisitos, riesgos procesales y proporcionalidad.
+
+Art. 232 — Equivalencias y reconocimiento de medidas
+  Aplicación: Liquidación de pena. Cómputo de medidas no privativas como tiempo de pena.
+
+Arts. 437, 441–442 — Recursos (Anulación/Casación)
+  Aplicación: Recursos. Procedencia, causales, términos y fundamentación.
+
+Arts. 500–514 — Ejecución de la pena
+  Aplicación: Liquidación de pena. Control judicial, beneficios y cómputos.
