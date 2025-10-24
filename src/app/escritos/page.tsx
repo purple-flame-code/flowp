@@ -143,7 +143,141 @@ function Modal({ open, onClose, children, title }: any) {
 }
 
 // ===========================================
-//  Catálogos
+//  Catálogos y Doctrina (tooltips)
+// ===========================================
+// Doctrina: estructura para tooltip y modal
+const DOCTRINA: Record<string, { title: string; excerpt: string; full: JSX.Element }> = {
+  "Error de tipo (art. 30)": {
+    title: "Error de tipo (art. 30 CP)",
+    excerpt:
+      "Se yerra sobre un elemento del tipo (por ejemplo, sobre la cosa ajena en hurto). Si el error es invencible, excluye el dolo y la culpabilidad; si es vencible, puede quedar culpa si el tipo la prevé.",
+    full: (
+      <div>
+        <p>
+          El <b>error de tipo</b> recae sobre un elemento descriptivo o normativo del tipo penal. La persona cree que no concurren los
+          elementos del tipo. Según Meini, se trata de la <i>"equivocación sobre los presupuestos fácticos de la prohibición"</i>.
+        </p>
+        <ul>
+          <li>
+            <b>Invencible:</b> excluye el dolo y la culpabilidad (art. 30), sin responsabilidad si no hay tipo culposo aplicable.
+          </li>
+          <li>
+            <b>Vencible:</b> excluye el dolo, pero puede subsistir la <i>culpa</i> si el tipo la prevé.
+          </li>
+        </ul>
+        <p>
+          <b>Ejemplo (Meini, adapt.):</b> quien retira una mochila creyendo de buena fe que es la suya (<i>error sobre la ajenidad</i>),
+          no actúa con dolo de hurto.
+        </p>
+        <p className="text-[11px] text-slate-400">Fuente: Iván Meini, <em>Teoría del Delito</em>, cap. sobre el error.</p>
+      </div>
+    ),
+  },
+  "Error de prohibición (art. 39)": {
+    title: "Error de prohibición (art. 39 CP)",
+    excerpt:
+      "Se yerra sobre la ilicitud del hecho (cree lícito lo prohibido). Invencible: excluye culpabilidad; vencible: atenúa la pena.",
+    full: (
+      <div>
+        <p>
+          El <b>error de prohibición</b> es la falta de conciencia sobre la <i>ilicitud</i> del hecho. No se discute el tipo objetivo, sino la
+          valoración normativa. Meini lo diferencia del error de tipo: aquí el agente sabe lo que hace, pero cree que está permitido.
+        </p>
+        <ul>
+          <li>
+            <b>Invencible:</b> excluye la culpabilidad (art. 39).
+          </li>
+          <li>
+            <b>Vencible:</b> reduce la pena por disminución de culpabilidad.
+          </li>
+        </ul>
+        <p>
+          <b>Ejemplo:</b> turista que caza en zona protegida tras recibir información oficial errónea que lo autorizaba.
+        </p>
+        <p className="text-[11px] text-slate-400">Fuente: Iván Meini, <em>Teoría del Delito</em>.</p>
+      </div>
+    ),
+  },
+  "Error en la punibilidad (doctrina)": {
+    title: "Error en la punibilidad (doctrina)",
+    excerpt:
+      "Equivocación sobre la existencia o alcance de una condición de punibilidad o excusa absolutoria. No altera la tipicidad, pero incide en la punibilidad.",
+    full: (
+      <div>
+        <p>
+          El <b>error en la punibilidad</b> concierne a <i>requisitos de castigabilidad</i> (condiciones objetivas, excusas absolutorias, etc.).
+          La conducta es típica, pero el agente yerra sobre si será punible o no.
+        </p>
+        <p>
+          <b>Ejemplo:</b> en delitos patrimoniales de escasa cuantía con querella necesaria, el autor cree que no se requiere querella y
+          que el Estado perseguirá de oficio.
+        </p>
+        <p className="text-[11px] text-slate-400">Doctrina comparada; síntesis según criterios expuestos por Meini.</p>
+      </div>
+    ),
+  },
+  "Error de tipo permisivo (doctrina)": {
+    title: "Error de tipo permisivo (doctrina)",
+    excerpt:
+      "Error sobre los presupuestos fácticos de una causa de justificación (p. ej., cree existir agresión para legítima defensa). Tratamiento como error de tipo.",
+    full: (
+      <div>
+        <p>
+          En el <b>error de tipo permisivo</b> el agente yerra sobre los <i>hechos</i> que habilitarían una causa de justificación. Se equipara
+          a error de tipo: si es invencible, excluye el dolo; si es vencible, puede quedar culpa si procede.
+        </p>
+        <p>
+          <b>Ejemplo:</b> guarda de seguridad que cree, por señales objetivas pero erróneas, que la víctima intenta asaltarlo.
+        </p>
+        <p className="text-[11px] text-slate-400">Fuente: Iván Meini, <em>Teoría del Delito</em>.</p>
+      </div>
+    ),
+  },
+  "Causas de justificación (arts. 31–33)": {
+    title: "Causas de justificación (arts. 31–33 CP)",
+    excerpt:
+      "Ejercicio legítimo de un derecho, legítima defensa y estado de necesidad. Requieren presupuestos fácticos y límites (proporción/exceso).",
+    full: (
+      <div>
+        <p>
+          Incluye: <b>ejercicio legítimo de un derecho</b> y <b>cumplimiento de un deber</b> (art. 31), <b>legítima defensa</b> con sus tres
+          requisitos (art. 32) y <b>estado de necesidad</b> (art. 33). El <b>exceso</b> se sanciona con reducción (art. 34).
+        </p>
+        <p className="text-[11px] text-slate-400">Base normativa: arts. 31–34 CP; esquema de análisis siguiendo a Meini.</p>
+      </div>
+    ),
+  },
+  "Imputabilidad / inimputabilidad (arts. 35–38)": {
+    title: "Imputabilidad e inimputabilidad (arts. 35–38 CP)",
+    excerpt:
+      "Capacidad de comprender la ilicitud y autodeterminarse. Reglas de embriaguez/intoxicación y caso de imputabilidad disminuida.",
+    full: (
+      <div>
+        <p>
+          La <b>imputabilidad</b> exige capacidad de comprensión y autodeterminación (art. 36). Reglas especiales para <b>embriaguez</b>
+          (art. 37) y <b>imputabilidad disminuida</b> (art. 38). Solo a inimputables: medidas de seguridad (art. 8).
+        </p>
+        <p className="text-[11px] text-slate-400">Síntesis normativa con apoyos doctrinales de Meini.</p>
+      </div>
+    ),
+  },
+  "Tentativa y desistimiento (arts. 48–49)": {
+    title: "Tentativa y desistimiento (arts. 48–49 CP)",
+    excerpt:
+      "Inicia la ejecución con actos idóneos sin consumación por causa ajena. Desistimiento voluntario excluye pena del delito intentado.",
+    full: (
+      <div>
+        <p>
+          Hay <b>tentativa</b> cuando se inician actos idóneos dirigidos a la consumación (art. 48). <b>Desistimiento</b> o impedir el resultado
+          excluye la pena del delito intentado, sin perjuicio de otros ilícitos cometidos (art. 49).
+        </p>
+        <p className="text-[11px] text-slate-400">Marco legal panameño; exposición conforme a Meini.</p>
+      </div>
+    ),
+  },
+};
+
+// Principios procesales (CPP) – Libro I, Título I, arts. 1–28
 // ===========================================
 // Principios procesales (CPP) – Libro I, Título I, arts. 1–28
 const PRINCIPIOS_CPP = [
