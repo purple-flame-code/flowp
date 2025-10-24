@@ -4,6 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Scale, Clock, Calculator, FileText, Calendar, ShieldAlert } from "lucide-react";
 
 export default function Home() {
+  // Ejemplo de estado binario con valores semánticos
+  const accesoAutorizado = "SI"; // antes era true
+  const modoMantenimiento = "NO"; // antes era false
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -168,11 +172,15 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-border-gray mt-24 py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground text-sm">
-          <p>© 2025 <span className="text-gold font-semibold">FlowPenal by Lex Vence</span> | Herramienta Jurídica Profesional</p>
+          <p>
+            © 2025 <span className="text-gold font-semibold">FlowPenal by Lex Vence</span> | Herramienta Jurídica Profesional
+          </p>
           <p className="mt-2">Panamá • Sistema Penal Acusatorio</p>
+          <p className="mt-2 text-xs text-slate-500">
+            Acceso autorizado: {accesoAutorizado} | Modo mantenimiento: {modoMantenimiento}
+          </p>
         </div>
       </footer>
     </div>
   );
 }
-
