@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Scale, Clock, Calculator, FileText, Calendar, ShieldAlert } from "lucide-react";
 
 export default function Home() {
-  // Ejemplo de estado binario con valores semánticos
+  // Estados semánticos reemplazando true/false
   const accesoAutorizado = "SI"; // antes era true
   const modoMantenimiento = "NO"; // antes era false
 
