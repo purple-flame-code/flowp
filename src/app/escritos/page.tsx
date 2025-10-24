@@ -6,6 +6,7 @@ import Link from "next/link";
 // ===========================================
 //  Escritos + Aura Penal – Wizard con Branding + Doctrina (tooltips + modal)
 //  Self-contained UI (sin dependencias externas de UI)
+//  **Actualización:** Catálogo completo de delitos (Libro Segundo) por Título → Capítulo → Delito
 // ===========================================
 
 type Rol = "Fiscalía" | "Defensa" | "Querella"; // Eliminado Órgano Judicial
@@ -203,109 +204,203 @@ const PRINCIPIOS_CP = [
   "Error de tipo permisivo (doctrina)",
 ];
 
-// Doctrina (Meini) – contenido de tooltips y modal "Ver más"
-const DOCTRINA: Record<string,{ title: string; excerpt: string; full: JSX.Element }> = {
-  "Error de tipo (art. 30)": {
-    title: "Error de tipo (art. 30 CP)",
-    excerpt: "Se yerra sobre un elemento del tipo. Excluye el dolo; si el error era invencible, también excluye culpa.",
-    full: (
-      <>
-        <p>El error recae sobre un elemento constitutivo del tipo penal (p. ej., confundir una persona con un animal). Falta el conocimiento del elemento típico; por ello, se excluye el <em>dolo</em>. Si el error era <strong>invencible</strong>, también se excluye la <em>culpa</em>.</p>
-        <p><strong>Ejemplo:</strong> el cazador dispara al bulto creyendo que es un venado; era una persona.</p>
-        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, cap. sobre error de tipo.</p>
-      </>
-    )
-  },
-  "Error de prohibición (art. 39)": {
-    title: "Error de prohibición (art. 39 CP)",
-    excerpt: "Se conocen los hechos, pero se desconoce su ilicitud. Invencible excluye culpabilidad; vencible la atenúa.",
-    full: (
-      <>
-        <p>El autor comprende lo que hace, pero ignora que está prohibido. El error <strong>invencible</strong> excluye la culpabilidad; el <strong>vencible</strong> la atenúa.</p>
-        <p><strong>Ejemplo:</strong> extranjero que aplica un castigo físico creyendo lícito, por costumbre.</p>
-        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, apartado sobre error de prohibición.</p>
-      </>
-    )
-  },
-  "Error en la punibilidad (doctrina)": {
-    title: "Error en la punibilidad (doctrina)",
-    excerpt: "Se yerra sobre la consecuencia jurídica (pena), no sobre el hecho. No excluye dolo ni culpabilidad.",
-    full: (
-      <>
-        <p>El sujeto conoce el hecho y su ilicitud, pero se confunde respecto de si la conducta está exenta de pena o sobre su cuantía. No excluye la responsabilidad; puede incidir en la dosificación si el error era razonable.</p>
-        <p><strong>Ejemplo:</strong> médico que cree que cierto aborto terapéutico está no punible cuando no lo está.</p>
-        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, desarrollo sobre error en la punibilidad.</p>
-      </>
-    )
-  },
-  "Error de tipo permisivo (doctrina)": {
-    title: "Error de tipo permisivo (doctrina)",
-    excerpt: "Error sobre los presupuestos fácticos de una causa de justificación (se cree que hay defensa, pero no la hay).",
-    full: (
-      <>
-        <p>Se cree erróneamente que concurren los hechos que habilitan una causa de justificación (legítima defensa, necesidad). Se trata como error de prohibición: si es invencible, excluye culpabilidad.</p>
-        <p><strong>Ejemplo:</strong> guardia que agrede pensando que la víctima estaba cometiendo un delito flagrante.</p>
-        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, análisis de error permisivo.</p>
-      </>
-    )
-  },
-  "Causas de justificación (arts. 31–33)": {
-    title: "Causas de justificación (arts. 31–33 CP)",
-    excerpt: "Legítima defensa, estado de necesidad y cumplimiento de un deber. Eliminan la antijuridicidad.",
-    full: (
-      <>
-        <p>Cuando concurren sus requisitos legales, la conducta no es antijurídica: la defensa exige agresión injusta actual o inminente, medio racional y ausencia de provocación; el estado de necesidad exige que el mal causado sea menor que el evitado.</p>
-        <p><strong>Meini:</strong> la antijuridicidad se analiza separada de la tipicidad.</p>
-      </>
-    )
-  },
-  "Imputabilidad / inimputabilidad (arts. 35–38)": {
-    title: "Imputabilidad / inimputabilidad (arts. 35–38 CP)",
-    excerpt: "Capacidad de comprender la ilicitud y de autodeterminarse. Disminuida reduce pena; inimputabilidad excluye culpabilidad.",
-    full: (
-      <>
-        <p>Se presume la imputabilidad. Trastornos mentales, embriaguez fortuita total o análogos pueden excluirla; si es disminuida, incide en la pena.</p>
-        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, capítulo sobre culpabilidad.</p>
-      </>
-    )
-  },
-  "Tentativa y desistimiento (arts. 48–49)": {
-    title: "Tentativa y desistimiento (arts. 48–49 CP)",
-    excerpt: "Inicio de ejecución sin resultado por causas ajenas; desistimiento voluntario excluye punibilidad.",
-    full: (
-      <>
-        <p>La tentativa reduce la pena conforme a reglas de dosificación; el desistimiento voluntario excluye la punibilidad cuando impide el resultado o abandona la ejecución.</p>
-        <p><strong>Meini:</strong> revela la ausencia de voluntad de consumación.</p>
-      </>
-    )
-  },
-};
+// === Catálogo completo de Delitos (Libro Segundo del Código Penal) ===
+// Estructura: Título → Capítulo → (opcional) Sección → Delitos (cuando el capítulo no detalla, usamos descriptor de capítulo)
 
-// Delitos (catálogo base – podrán ampliarse por Título/Capítulo más adelante)
-const DELITOS_CP = [
-  "Homicidio doloso",
-  "Lesiones personales",
-  "Aborto provocado",
-  "Hurto agravado",
-  "Robo agravado",
-  "Estafa",
-  "Apropiación indebida",
-  "Peculado",
-  "Corrupción de servidores públicos",
-  "Falsificación de documento",
-  "Blanqueo de capitales",
-  "Violencia doméstica",
+interface DelitoNodo {
+  titulo: string;
+  capitulos: { nombre: string; secciones?: { nombre: string; delitos?: string[] }[]; delitos?: string[] }[];
+}
+
+const CATALOGO_DELITOS: DelitoNodo[] = [
+  { titulo: "Título I - Delitos contra la Vida y la Integridad Personal",
+    capitulos: [
+      { nombre: "Capítulo I - Delitos contra la Vida Humana",
+        secciones: [
+          { nombre: "Sección 1ª - Homicidio", delitos: ["Homicidio doloso", "Homicidio agravado", "Homicidio culposo"] },
+          { nombre: "Sección 2ª - Lesiones Personales", delitos: ["Lesiones personales", "Lesiones agravadas", "Lesiones culposas"] },
+          { nombre: "Sección 3ª - Aborto Provocado", delitos: ["Aborto provocado", "Aborto consentido"] },
+        ]
+      },
+      { nombre: "Capítulo II - Reproducción y Manipulación Genética" },
+      { nombre: "Capítulo III - Abandono de Niños y otras Personas Incapaces" },
+    ]
+  },
+  { titulo: "Título II - Delitos contra la Libertad",
+    capitulos: [
+      { nombre: "Capítulo I - Libertad Individual y Desaparición Forzada" },
+      { nombre: "Capítulo II - Inviolabilidad del Domicilio o Lugar de Trabajo" },
+      { nombre: "Capítulo III - Inviolabilidad del Secreto y Derecho a la Intimidad" },
+      { nombre: "Capítulo IV - Libertad de Reunión y de Prensa" },
+      { nombre: "Capítulo V - Libertad de Culto" },
+    ]
+  },
+  { titulo: "Título III - Delitos contra la Libertad e Integridad Sexual",
+    capitulos: [
+      { nombre: "Capítulo I - Violación y otros Delitos Sexuales" },
+      { nombre: "Capítulo II - Corrupción de Menores y Explotación Sexual Comercial" },
+      { nombre: "Capítulo III - Disposición Común" },
+    ]
+  },
+  { titulo: "Título IV - Delitos contra el Honor de la Persona Natural",
+    capitulos: [
+      { nombre: "Capítulo I - Injuria y Calumnia", delitos: ["Injuria", "Calumnia"] },
+      { nombre: "Capítulo II - Disposiciones Comunes" },
+    ]
+  },
+  { titulo: "Título V - Delitos contra el Orden Jurídico Familiar y el Estado Civil",
+    capitulos: [
+      { nombre: "Capítulo I - Violencia Doméstica", delitos: ["Violencia doméstica"] },
+      { nombre: "Capítulo II - Maltrato de Niño, Niña o Adolescente" },
+      { nombre: "Capítulo III - Identidad y Tráfico de Personas Menores de Edad" },
+      { nombre: "Capítulo IV - Delitos contra la Familia" },
+    ]
+  },
+  { titulo: "Título VI - Delitos contra el Patrimonio Económico",
+    capitulos: [
+      { nombre: "Capítulo I - Hurto", delitos: ["Hurto simple", "Hurto agravado"] },
+      { nombre: "Capítulo II - Robo", delitos: ["Robo simple", "Robo agravado"] },
+      { nombre: "Capítulo III - Estafa y otros Fraudes", delitos: ["Estafa", "Fraude", "Cheques sin fondos (si aplica por remisión)"] },
+      { nombre: "Capítulo IV - Apropiación Indebida", delitos: ["Apropiación indebida"] },
+      { nombre: "Capítulo V - Usurpación", delitos: ["Usurpación"] },
+      { nombre: "Capítulo VI - Daños", delitos: ["Daños"] },
+      { nombre: "Capítulo VII - Patrimonio Histórico de la Nación" },
+      { nombre: "Capítulo VIII - Disposiciones Comunes" },
+    ]
+  },
+  { titulo: "Título VII - Delitos contra el Orden Económico",
+    capitulos: [
+      { nombre: "Capítulo I - Libre Competencia y Derechos de Consumidores" },
+      { nombre: "Capítulo II - Retención Indebida de Cuotas" },
+      { nombre: "Capítulo III - Delitos Financieros" },
+      { nombre: "Capítulo IV - Blanqueo de Capitales", delitos: ["Blanqueo de capitales"] },
+      { nombre: "Capítulo V - Seguridad Económica" },
+      { nombre: "Capítulo VI - Propiedad Intelectual",
+        secciones: [
+          { nombre: "Sección 1ª - Derecho de Autor y Conexos" },
+          { nombre: "Sección 2ª - Propiedad Industrial" },
+          { nombre: "Sección 3ª - Derechos Colectivos de Pueblos Indígenas" },
+          { nombre: "Sección 4ª - Disposiciones Comunes" },
+        ]
+      },
+      { nombre: "Capítulo VII - Insolvencias Punibles" },
+      { nombre: "Capítulo VIII - Competencia Desleal" },
+      { nombre: "Capítulo IX - Cheques y Tarjetas de Crédito" },
+      { nombre: "Capítulo X - Revelación de Secretos Empresariales" },
+      { nombre: "Capítulo XI - Contrabando y Defraudación Aduanera" },
+      { nombre: "Capítulo XII - Delitos contra el Tesoro Nacional" },
+    ]
+  },
+  { titulo: "Título VIII - Delitos contra la Seguridad Jurídica de los Medios Electrónicos",
+    capitulos: [ { nombre: "Capítulo I - Delitos Contra la Seguridad Informática" } ]
+  },
+  { titulo: "Título IX - Delitos Contra la Seguridad Colectiva",
+    capitulos: [
+      { nombre: "Capítulo I - Terrorismo y Financiamiento" },
+      { nombre: "Capítulo II - Peligro Común" },
+      { nombre: "Capítulo III - Medios de Transporte" },
+      { nombre: "Capítulo IV - Salud Pública" },
+      { nombre: "Capítulo V - Drogas" },
+      { nombre: "Capítulo VI - Piratería" },
+      { nombre: "Capítulo VII - Delincuencia Organizada" },
+      { nombre: "Capítulo VIII - Asociación Ilícita" },
+      { nombre: "Capítulo IX - Armas y Explosivos" },
+      { nombre: "Capítulo X - Material Ilícito (apropiación y sustracción violenta)" },
+      { nombre: "Capítulo XI - Disposiciones Comunes" },
+    ]
+  },
+  { titulo: "Título X - Delitos Contra la Administración Pública",
+    capitulos: [
+      { nombre: "Capítulo I - Peculado", delitos: ["Peculado"] },
+      { nombre: "Capítulo II - Corrupción de Servidores Públicos", delitos: ["Corrupción de servidores públicos"] },
+      { nombre: "Capítulo III - Enriquecimiento Injustificado" },
+      { nombre: "Capítulo IV - Concusión y Exacción" },
+      { nombre: "Capítulo V - Tráfico de influencias" },
+      { nombre: "Capítulo VI - Abuso de Autoridad e Infracción de Deberes" },
+      { nombre: "Capítulo VII - Delitos Contra los Servidores Públicos" },
+      { nombre: "Capítulo VIII - Violación de Sellos Públicos" },
+      { nombre: "Capítulo IX - Fraude en Contratación Pública" },
+    ]
+  },
+  { titulo: "Título XI - Delitos Contra la Fe Pública",
+    capitulos: [
+      { nombre: "Capítulo I - Falsificación de Documento en General", delitos: ["Falsificación de documento"] },
+      { nombre: "Capítulo II - Falsificación de Moneda y otros Valores" },
+      { nombre: "Capítulo III - Falsificación de Sellos Públicos" },
+      { nombre: "Capítulo IV - Ejercicio Ilegal de una Profesión" },
+    ]
+  },
+  { titulo: "Título XII - Delitos contra la Administración de Justicia",
+    capitulos: [
+      { nombre: "Capítulo I - Simulación de Hechos Punibles y Calumnia en Actuaciones" },
+      { nombre: "Capítulo II - Falso Testimonio" },
+      { nombre: "Capítulo III - Prevaricato" },
+      { nombre: "Capítulo IV - Encubrimiento" },
+      { nombre: "Capítulo V - Tráfico y Receptación de Cosas Provenientes del Delito" },
+      { nombre: "Capítulo VI - Evasión" },
+      { nombre: "Capítulo VII - Hacerse Justicia por Sí Mismo" },
+      { nombre: "Capítulo VIII - Quebrantamiento de Medidas de Protección y Sanciones" },
+      { nombre: "Capítulo IX - Apología del Delito" },
+    ]
+  },
+  { titulo: "Título XIII - Delitos Contra el Ambiente y el Orden Territorial",
+    capitulos: [
+      { nombre: "Capítulo I - Recursos Naturales" },
+      { nombre: "Capítulo II - Vida Silvestre" },
+      { nombre: "Capítulo III - Urbanístico Territorial" },
+      { nombre: "Capítulo IV - Contra los Animales Domésticos" },
+      { nombre: "Capítulo V - Disposiciones Comunes" },
+    ]
+  },
+  { titulo: "Título XIV - Delitos Contra la Personalidad Jurídica del Estado",
+    capitulos: [
+      { nombre: "Capítulo I - Personalidad Internacional del Estado" },
+      { nombre: "Capítulo II - Personalidad Interna del Estado" },
+    ]
+  },
+  { titulo: "Título XV - Delitos contra la Humanidad",
+    capitulos: [
+      { nombre: "Capítulo I - Derechos Humanos (DIH)" },
+      { nombre: "Capítulo II - Personas y Bienes Protegidos por DIH" },
+      { nombre: "Capítulo III - Disposiciones Comunes" },
+      { nombre: "Capítulo IV - Trata de Personas" },
+      { nombre: "Capítulo V - Tráfico Ilícito de Migrantes" },
+    ]
+  },
 ];
+
+// Utilidad: construir selects dependientes y valor final de "delitoCP"
+const TITULOS = CATALOGO_DELITOS.map(t=>t.titulo);
+function capitulosDe(titulo: string) { return (CATALOGO_DELITOS.find(t=>t.titulo===titulo)?.capitulos||[]).map(c=>c.nombre); }
+function delitosDe(titulo: string, cap: string): string[] {
+  const capObj = CATALOGO_DELITOS.find(t=>t.titulo===titulo)?.capitulos.find(c=>c.nombre===cap);
+  const direct = capObj?.delitos||[];
+  const secc = (capObj?.secciones||[]).flatMap(s=> s.delitos||[]);
+  const all = [...direct, ...secc];
+  // Si el capítulo no trae delitos desglosados, ofertamos el propio capítulo como selección
+  return all.length ? all : [cap + " (todos)"];
+}
 
 // Mock de pena por tipo (solo para summary contextual)
 const PENA_POR_DELITO: Record<string,{min:number,max:number}> = {
   "Homicidio doloso": {min:144, max:360},
+  "Homicidio agravado": {min:180, max:420},
+  "Homicidio culposo": {min:6, max:48},
   "Lesiones personales": {min:6, max:84},
+  "Lesiones agravadas": {min:12, max:120},
+  "Lesiones culposas": {min:3, max:24},
   "Aborto provocado": {min:12, max:72},
+  "Aborto consentido": {min:6, max:48},
+  "Hurto simple": {min:12, max:48},
   "Hurto agravado": {min:24, max:84},
+  "Robo simple": {min:48, max:108},
   "Robo agravado": {min:60, max:144},
   "Estafa": {min:12, max:72},
+  "Fraude": {min:12, max:72},
+  "Cheques sin fondos (si aplica por remisión)": {min:6, max:36},
   "Apropiación indebida": {min:6, max:48},
+  "Usurpación": {min:6, max:36},
+  "Daños": {min:6, max:36},
   "Peculado": {min:72, max:180},
   "Corrupción de servidores públicos": {min:48, max:144},
   "Falsificación de documento": {min:24, max:96},
@@ -538,6 +633,29 @@ export default function EscritosWizard() {
   });
   const auraOut = useMemo(()=> ejecutarAura(auraIn), [auraIn]);
 
+  // Selección jerárquica de Delitos (Libro II)
+  const [selTitulo, setSelTitulo] = useState<string>(TITULOS[0]);
+  const [selCap, setSelCap] = useState<string>(capitulosDe(TITULOS[0])[0]);
+  const [selDelito, setSelDelito] = useState<string>(delitosDe(TITULOS[0], capitulosDe(TITULOS[0])[0])[0]);
+
+  // Sincroniza selección jerárquica con auraIn.delitoCP
+  useEffect(()=>{
+    setAuraIn(prev=> ({...prev, delitoCP: selDelito }));
+  }, [selDelito]);
+
+  // Al cambiar Título o Capítulo, recalcular las dependencias
+  useEffect(()=>{
+    const caps = capitulosDe(selTitulo);
+    const cap = caps[0];
+    setSelCap(cap);
+    const dels = delitosDe(selTitulo, cap);
+    setSelDelito(dels[0]);
+  }, [selTitulo]);
+  useEffect(()=>{
+    const dels = delitosDe(selTitulo, selCap);
+    setSelDelito(dels[0]);
+  }, [selCap]);
+
   // Paso 3 – Redacción
   const [tipo, setTipo] = useState<EscritoTipo>("Sobreseimiento (CPP 350)");
   const [meta, setMeta] = useState<MetaCaso>({
@@ -634,21 +752,36 @@ export default function EscritosWizard() {
       setRol("Fiscalía"); setEntidad("Ministerio Público"); setBranding(b=>({...b, entidad:"Ministerio Público", nombreEntidad:"Sección de Homicidios – Fiscalía Metropolitana", firmaLinea:"Fiscal de Circuito", firmaNombre:"Licdo. Carlos Rivera" }));
       setTipo("Acusación (CPP 340)"); setMeta(m=>({...m, delito:"Homicidio doloso", imputado:"Luis Delgado M.", victima:"Ana Castillo P.", numeroCausa:"2025-111111"}));
       setDestino({ nombre:"Juzgado de Juicio Oral del Primer Circuito" });
+      setSelTitulo("Título I - Delitos contra la Vida y la Integridad Personal");
+      setSelCap("Capítulo I - Delitos contra la Vida Humana");
+      setSelDelito("Homicidio doloso");
     } else if (id === "sobreseimiento-demo") {
       setRol("Defensa"); setEntidad("Despacho Privado"); setBranding(b=>({...b, entidad:"Despacho Privado", nombreEntidad:"Despacho Justicia & Derecho", firmaLinea:"Abogado Defensor Particular", firmaNombre:"Licda. Sofía Torres" }));
       setTipo("Sobreseimiento (CPP 350)"); setMeta(m=>({...m, delito:"Estafa", imputado:"Pedro Moreno R.", victima:"Comercial ABC, S.A.", numeroCausa:"2025-222222"}));
       setDestino({ nombre:"Juzgado de Garantías del Primer Circuito" });
+      setSelTitulo("Título VI - Delitos contra el Patrimonio Económico");
+      setSelCap("Capítulo III - Estafa y otros Fraudes");
+      setSelDelito("Estafa");
     } else if (id === "imputacion-demo") {
       setRol("Fiscalía"); setEntidad("Ministerio Público"); setBranding(b=>({...b, entidad:"Ministerio Público", nombreEntidad:"Fiscalía Metropolitana – Sección Patrimonio", firmaLinea:"Fiscal Adjunta", firmaNombre:"Licda. Mariel Pardo" }));
       setTipo("Imputación (CPP 280-281)"); setMeta(m=>({...m, delito:"Hurto agravado", imputado:"Javier Núñez L.", victima:"Laura Ríos T.", numeroCausa:"2025-333333"}));
       setDestino({ nombre:"Juzgado de Garantías del Primer Circuito" });
+      setSelTitulo("Título VI - Delitos contra el Patrimonio Económico");
+      setSelCap("Capítulo I - Hurto");
+      setSelDelito("Hurto agravado");
     } else if (id === "archivo-mp-demo") {
       setRol("Fiscalía"); setEntidad("Ministerio Público"); setBranding(b=>({...b, entidad:"Ministerio Público", nombreEntidad:"Sección de Delitos Informáticos – Fiscalía Metropolitana", firmaLinea:"Fiscal de Sección", firmaNombre:"Licdo. Hugo Villar" }));
       setTipo("Archivo provisional (MP)"); setMeta(m=>({...m, delito:"Estafa", imputado:"N.N.", victima:"Tecnología Panamá S.A.", numeroCausa:"2025-444444"}));
+      setSelTitulo("Título VI - Delitos contra el Patrimonio Económico");
+      setSelCap("Capítulo III - Estafa y otros Fraudes");
+      setSelDelito("Estafa");
     } else if (id === "sol-archivo-def-demo") {
       setRol("Defensa"); setEntidad("Despacho Privado"); setBranding(b=>({...b, entidad:"Despacho Privado", nombreEntidad:"Bufete Litoral", firmaLinea:"Abogado Defensor Particular", firmaNombre:"Licdo. Iván Salcedo" }));
       setTipo("Solicitud de archivo (Defensa)"); setMeta(m=>({...m, delito:"Robo agravado", imputado:"Roberto Díaz V.", victima:"SuperMercados Unidos S.A.", numeroCausa:"2025-555555"}));
       setDestino({ nombre:"Sección de Propiedad – Fiscalía Metropolitana" });
+      setSelTitulo("Título VI - Delitos contra el Patrimonio Económico");
+      setSelCap("Capítulo II - Robo");
+      setSelDelito("Robo agravado");
     }
   };
 
@@ -793,8 +926,13 @@ export default function EscritosWizard() {
                   </select>
                 </div>
                 <div>
-                  <Label>Delito (CP)</Label>
-                  <Select value={auraIn.delitoCP} onChange={(v:any)=>setAuraIn({...auraIn, delitoCP:v})} options={DELITOS_CP} />
+                  <Label>Delito (Libro II del CP)</Label>
+                  {/* Selector jerárquico: Título → Capítulo → Delito */}
+                  <div className="space-y-2">
+                    <Select value={selTitulo} onChange={(v:any)=>setSelTitulo(v)} options={TITULOS} />
+                    <Select value={selCap} onChange={(v:any)=>setSelCap(v)} options={capitulosDe(selTitulo)} />
+                    <Select value={selDelito} onChange={(v:any)=>setSelDelito(v)} options={delitosDe(selTitulo, selCap)} />
+                  </div>
                 </div>
               </div>
 
