@@ -1,109 +1,178 @@
-"use client";
-
 import Link from "next/link";
-
-// ===========================================
-// Home – FlowPenal (launcher principal)
-// Tarjetas de acceso rápido a los módulos principales
-// Autocontenido y estilizado en Tailwind
-// ===========================================
-
-function Card({ title, description, href }: { title: string; description: string; href: string }) {
-  return (
-    <Link
-      href={href}
-      className="group block rounded-2xl border border-white/10 bg-slate-900/40 hover:bg-slate-900/60 transition shadow-sm"
-    >
-      <div className="p-4">
-        <div className="text-base font-semibold text-white group-hover:text-white">{title}</div>
-        <p className="mt-1 text-xs text-slate-400 group-hover:text-slate-300">{description}</p>
-        <div className="mt-3 inline-flex items-center text-[12px] text-sky-300 group-hover:text-sky-200">
-          Abrir →
-        </div>
-      </div>
-    </Link>
-  );
-}
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Scale, Clock, Calculator, FileText, Calendar, ShieldAlert } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      {/* Encabezado */}
-      <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur sticky top-0 z-20">
-        <div className="mx-auto max-w-6xl px-4 py-4">
-          <h1 className="text-lg font-semibold">FlowPenal</h1>
-          <p className="text-xs text-slate-400">
-            Herramientas de análisis penal y redacción procesal – Panamá
-          </p>
+    <div className="min-h-screen">
+      {/* Header */}
+      <header className="border-b border-border-gray bg-surface-dark/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gold rounded flex items-center justify-center">
+              <Scale className="w-6 h-6 text-bg-gradient-start" />
+            </div>
+            <h1 className="text-xl font-poppins font-bold text-foreground">
+              FlowPenal <span className="text-gold">by Lex Vence</span>
+            </h1>
+          </div>
+          <nav className="flex gap-4">
+            <Link href="/brand">
+              <Button variant="ghost" className="text-foreground hover:text-gold">Mi Marca</Button>
+            </Link>
+            <Link href="/docs">
+              <Button variant="ghost" className="text-foreground hover:text-gold">Documentos</Button>
+            </Link>
+          </nav>
         </div>
       </header>
 
-      {/* Cuerpo principal */}
-      <main className="mx-auto max-w-6xl px-4 py-6 space-y-8">
-        {/* Tarjetas principales */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card
-            title="Redacción de Escritos"
-            description="Wizard guiado: branding, Aura Penalista, argumentación jurídica y estructura legal conforme al CPP y CP. Exporta a PDF/DOC."
-            href="/escritos"
-          />
-
-          <Card
-            title="Riesgos Procesales y Medidas Cautelares"
-            description="Analiza riesgos de fuga, obstaculización, peligro para la víctima o la comunidad. Calcula arraigo, genera matriz y conclusiones según rol."
-            href="/riesgos"
-          />
-
-          <Card
-            title="Cálculo de Penas"
-            description="Herramienta de estimación de penas conforme al Código Penal. Incluye agravantes, atenuantes, grado de ejecución y rango orientativo."
-            href="/penas"
-          />
-
-          <Card
-            title="Atenuantes y Agravantes"
-            description="Selección de circunstancias comunes y específicas conforme al Código Penal panameño, con cálculo del impacto proporcional en la pena."
-            href="/circunstancias"
-          />
-
-          <Card
-            title="Aura Penalista"
-            description="Asistente de análisis penal. Permite ingresar hechos, principios procesales y penales, y obtiene un resumen doctrinal y tipicidad probable."
-            href="/aura"
-          />
-
-          <Card
-            title="Calculadora de Honorarios"
-            description="Calcula honorarios profesionales según la complejidad, etapa procesal y tipo de actuación. Incluye generador de contrato y cláusulas automáticas."
-            href="/honorarios"
-          />
-        </section>
-
-        {/* Notas generales */}
-        <section>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
-            <h2 className="text-sm font-semibold">Notas</h2>
-            <ul className="mt-2 text-xs text-slate-400 list-disc list-inside space-y-1">
-              <li>
-                Todos los módulos funcionan sin dependencias visuales externas y son compatibles con
-                entornos restringidos.
-              </li>
-              <li>
-                La exportación a PDF usa importación dinámica; si no está disponible, existe fallback
-                automático a DOC o TXT.
-              </li>
-              <li>
-                Las plantillas, matrices y argumentos están adaptados al derecho panameño, siguiendo
-                el Código Penal y el Código Procesal Penal.
-              </li>
-              <li>
-                Los textos generados pueden incorporarse directamente en los escritos creados por
-                Aura Penalista o descargarse como documentos independientes.
-              </li>
-            </ul>
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-16 md:py-24">
+        <div className="max-w-4xl mx-auto text-center space-y-6">
+          <h2 className="text-4xl md:text-5xl font-poppins font-bold text-foreground leading-tight">
+            Herramienta Jurídica Profesional
+          </h2>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            Cálculo de penas, prescripción penal, liquidación y generación de escritos
+            con branding profesional para abogados en Panamá.
+          </p>
+          <div className="pt-4">
+            <Button
+              size="lg"
+              className="bg-gold hover:bg-gold/90 text-bg-gradient-start font-semibold text-lg px-8 py-6 shadow-glow"
+              asChild
+            >
+              <a href="#modules">Iniciar Herramienta</a>
+            </Button>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
+
+      {/* Modules Grid */}
+      <section id="modules" className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+
+          {/* Recursos y Términos */}
+          <Link href="/recursos">
+            <Card className="border-border-gray bg-card hover:border-gold transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
+                  <Calendar className="w-6 h-6 text-gold" />
+                </div>
+                <CardTitle className="text-2xl font-poppins font-bold text-foreground">
+                  Recursos y Términos
+                </CardTitle>
+                <CardDescription className="text-base text-muted-foreground mt-2">
+                  Calcule plazos exactos para recursos de anulación y casación con cómputo
+                  de días hábiles y calendario detallado (CPP 437, 441).
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          {/* Cálculo de Penas */}
+          <Link href="/penas">
+            <Card className="border-border-gray bg-card hover:border-gold transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
+                  <Calculator className="w-6 h-6 text-gold" />
+                </div>
+                <CardTitle className="text-2xl font-poppins font-bold text-foreground">
+                  Cálculo de Penas
+                </CardTitle>
+                <CardDescription className="text-base text-muted-foreground mt-2">
+                  Calcule penas con agravantes, atenuantes, tentativa, confesión y concursos.
+                  Determine subrogados penales aplicables según el Código Penal.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          {/* Prescripción Penal */}
+          <Link href="/prescripcion">
+            <Card className="border-border-gray bg-card hover:border-blue-lex transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-blue-lex/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-lex/20 transition-colors">
+                  <Clock className="w-6 h-6 text-blue-lex" />
+                </div>
+                <CardTitle className="text-2xl font-poppins font-bold text-foreground">
+                  Prescripción Penal
+                </CardTitle>
+                <CardDescription className="text-base text-muted-foreground mt-2">
+                  Determine plazos de prescripción según CPP o CJ (sistema inquisitivo).
+                  Incluye suspensiones, interrupciones y cómputo por distrito.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          {/* Liquidación de Pena */}
+          <Link href="/liquidacion">
+            <Card className="border-border-gray bg-card hover:border-gold transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
+                  <Scale className="w-6 h-6 text-gold" />
+                </div>
+                <CardTitle className="text-2xl font-poppins font-bold text-foreground">
+                  Liquidación de Pena
+                </CardTitle>
+                <CardDescription className="text-base text-muted-foreground mt-2">
+                  Calcule ½ y ⅔ de pena con abonos de medidas cautelares (CPP 232)
+                  y conmutación por trabajo, estudio y conducta (CP 99-104).
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          {/* Generador de Escritos */}
+          <Link href="/escritos">
+            <Card className="border-border-gray bg-card hover:border-blue-lex transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-blue-lex/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-lex/20 transition-colors">
+                  <FileText className="w-6 h-6 text-blue-lex" />
+                </div>
+                <CardTitle className="text-2xl font-poppins font-bold text-foreground">
+                  Generador de Escritos
+                </CardTitle>
+                <CardDescription className="text-base text-muted-foreground mt-2">
+                  Genere escritos profesionales (imputación, recursos, querellas) con
+                  su branding personalizado y fundamento legal automático.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+          {/* Riesgos Procesales y Medidas Cautelares */}
+          <Link href="/riesgos">
+            <Card className="border-border-gray bg-card hover:border-gold transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
+              <CardHeader>
+                <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
+                  <ShieldAlert className="w-6 h-6 text-gold" />
+                </div>
+                <CardTitle className="text-2xl font-poppins font-bold text-foreground">
+                  Riesgos Procesales y Medidas Cautelares
+                </CardTitle>
+                <CardDescription className="text-base text-muted-foreground mt-2">
+                  Matriz de riesgos (fuga, obstaculización, peligro a la víctima/comunidad), puntaje de arraigo y
+                  conclusiones según rol. Exporta informe en PDF/DOC.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border-gray mt-24 py-8">
+        <div className="container mx-auto px-4 text-center text-muted-foreground text-sm">
+          <p>© 2025 <span className="text-gold font-semibold">FlowPenal by Lex Vence</span> | Herramienta Jurídica Profesional</p>
+          <p className="mt-2">Panamá • Sistema Penal Acusatorio</p>
+        </div>
+      </footer>
     </div>
   );
 }
+
