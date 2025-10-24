@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 // ===========================================
-//  Escritos – Wizard con Branding + Aura + Redacción
+//  Escritos + Aura Penal – Wizard con Branding + Doctrina (tooltips + modal)
 //  Self-contained UI (sin dependencias externas de UI)
 // ===========================================
 
@@ -105,42 +105,212 @@ function Select({ value, onChange, options }: { value: any; onChange: (v:any)=>v
     </select>
   );
 }
-function Textarea({ value, onChange, className="" }: any) {
+function Textarea({ value, onChange, className = "" }: any) {
   return <textarea value={value} onChange={onChange} className={`w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 ${className}`} />;
 }
 
+// Tooltip minimalista con botón "Ver más"
+function Tooltip({ title, excerpt, onVerMas }: { title: string; excerpt: string; onVerMas: ()=>void }) {
+  return (
+    <div className="absolute z-30 mt-2 w-80 max-w-[22rem] rounded-xl border border-white/10 bg-slate-900/95 p-3 shadow-xl backdrop-blur">
+      <div className="text-xs font-semibold mb-1">{title}</div>
+      <div className="text-xs text-slate-300 leading-relaxed">{excerpt}</div>
+      <div className="mt-2 text-right">
+        <Btn variant="outline" onClick={onVerMas} className="!px-2 !py-1 text-xs">Ver más</Btn>
+      </div>
+    </div>
+  );
+}
+
+// Modal para doctrina extendida
+function Modal({ open, onClose, children, title }: any) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative z-50 w-[min(840px,92vw)] max-h-[88vh] overflow-auto rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-2xl">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-2">
+          <div className="text-sm font-semibold">{title}</div>
+          <Btn variant="outline" onClick={onClose}>Cerrar</Btn>
+        </div>
+        <div className="prose prose-invert max-w-none text-sm leading-relaxed mt-3">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ===========================================
-//  Utilidades
+//  Catálogos
 // ===========================================
+// Principios procesales (CPP) – Libro I, Título I, arts. 1–28
 const PRINCIPIOS_CPP = [
-  "Proporcionalidad (art. 221)",
-  "Debido proceso",
-  "Motivación de las decisiones",
-  "Publicidad/contradicción (según fase)",
-  "Plazos razonables",
-];
-const PRINCIPIOS_CP = [
-  "Legalidad (art. 32 Const.)",
-  "Presunción de inocencia",
-  "Culpabilidad",
-  "Prohibición de doble sanción",
+  "Interpretación y prevalencia de principios (art. 1)",
+  "Legalidad procesal (art. 2)",
+  "Principios del proceso (debido proceso, contradicción, oralidad, etc.) (art. 3)",
+  "Juez natural (art. 4)",
+  "Separación de funciones (art. 5)",
+  "Independencia e imparcialidad (art. 6)",
+  "Prohibición de doble juzgamiento (art. 7)",
+  "Inocencia (art. 8)",
+  "Publicidad del proceso (art. 9)",
+  "Derecho a la defensa (art. 10)",
+  "Libertades personales (art. 11)",
+  "Control judicial de afectación de derechos (art. 12)",
+  "Derecho a la intimidad (art. 13)",
+  "Respeto a los derechos humanos (art. 14)",
+  "Justicia en tiempo razonable (art. 15)",
+  "Derecho a no declarar contra sí mismo (art. 16)",
+  "Validez de la prueba (art. 17)",
+  "Lealtad y buena fe (art. 18)",
+  "Igualdad procesal (art. 19)",
+  "Protección de la víctima y colaboradores (art. 20)",
+  "Interpretación restrictiva (art. 21)",
+  "Motivación (art. 22)",
+  "Impugnación (art. 23)",
+  "Investigación objetiva (art. 24)",
+  "Control judicial de la pena (art. 25)",
+  "Solución del conflicto (art. 26)",
+  "Gratuidad (art. 27)",
+  "Diversidad cultural (art. 28)",
+  // Plus: mantenemos proporcionalidad 221 como ayuda para medidas
+  "Proporcionalidad de medidas cautelares (CPP art. 221)",
 ];
 
+// Principios penales (CP) – Libro I, con claves para tooltips doctrinales
+const PRINCIPIOS_CP = [
+  "Dignidad humana (art. 1)",
+  "Intervención mínima (arts. 2–3)",
+  "Legalidad penal y tipicidad (arts. 4, 9, 12, 16)",
+  "Retroactividad favorable (art. 14)",
+  "Necesidad, proporcionalidad y razonabilidad (art. 6)",
+  "Funciones de la pena (art. 7)",
+  "Inimputables y medidas de seguridad (art. 8)",
+  "Dolo (arts. 26–27)",
+  "Culpa (art. 28)",
+  "Caso fortuito / fuerza mayor (art. 29)",
+  "Error de tipo (art. 30)",
+  "Causas de justificación (arts. 31–33)",
+  "Exceso en causas de justificación (art. 34)",
+  "Imputabilidad / inimputabilidad (arts. 35–38)",
+  "Error de prohibición (art. 39)",
+  "Obediencia debida / miedo insuperable (art. 40–42)",
+  "Límites culturales a eximentes (art. 42-A)",
+  "Autoría y participación (arts. 43–47)",
+  "Tentativa y desistimiento (arts. 48–49)",
+  "Error en la punibilidad (doctrina)",
+  "Error de tipo permisivo (doctrina)",
+];
+
+// Doctrina (Meini) – contenido de tooltips y modal "Ver más"
+const DOCTRINA: Record<string,{ title: string; excerpt: string; full: JSX.Element }> = {
+  "Error de tipo (art. 30)": {
+    title: "Error de tipo (art. 30 CP)",
+    excerpt: "Se yerra sobre un elemento del tipo. Excluye el dolo; si el error era invencible, también excluye culpa.",
+    full: (
+      <>
+        <p>El error recae sobre un elemento constitutivo del tipo penal (p. ej., confundir una persona con un animal). Falta el conocimiento del elemento típico; por ello, se excluye el <em>dolo</em>. Si el error era <strong>invencible</strong>, también se excluye la <em>culpa</em>.</p>
+        <p><strong>Ejemplo:</strong> el cazador dispara al bulto creyendo que es un venado; era una persona.</p>
+        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, cap. sobre error de tipo.</p>
+      </>
+    )
+  },
+  "Error de prohibición (art. 39)": {
+    title: "Error de prohibición (art. 39 CP)",
+    excerpt: "Se conocen los hechos, pero se desconoce su ilicitud. Invencible excluye culpabilidad; vencible la atenúa.",
+    full: (
+      <>
+        <p>El autor comprende lo que hace, pero ignora que está prohibido. El error <strong>invencible</strong> excluye la culpabilidad; el <strong>vencible</strong> la atenúa.</p>
+        <p><strong>Ejemplo:</strong> extranjero que aplica un castigo físico creyendo lícito, por costumbre.</p>
+        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, apartado sobre error de prohibición.</p>
+      </>
+    )
+  },
+  "Error en la punibilidad (doctrina)": {
+    title: "Error en la punibilidad (doctrina)",
+    excerpt: "Se yerra sobre la consecuencia jurídica (pena), no sobre el hecho. No excluye dolo ni culpabilidad.",
+    full: (
+      <>
+        <p>El sujeto conoce el hecho y su ilicitud, pero se confunde respecto de si la conducta está exenta de pena o sobre su cuantía. No excluye la responsabilidad; puede incidir en la dosificación si el error era razonable.</p>
+        <p><strong>Ejemplo:</strong> médico que cree que cierto aborto terapéutico está no punible cuando no lo está.</p>
+        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, desarrollo sobre error en la punibilidad.</p>
+      </>
+    )
+  },
+  "Error de tipo permisivo (doctrina)": {
+    title: "Error de tipo permisivo (doctrina)",
+    excerpt: "Error sobre los presupuestos fácticos de una causa de justificación (se cree que hay defensa, pero no la hay).",
+    full: (
+      <>
+        <p>Se cree erróneamente que concurren los hechos que habilitan una causa de justificación (legítima defensa, necesidad). Se trata como error de prohibición: si es invencible, excluye culpabilidad.</p>
+        <p><strong>Ejemplo:</strong> guardia que agrede pensando que la víctima estaba cometiendo un delito flagrante.</p>
+        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, análisis de error permisivo.</p>
+      </>
+    )
+  },
+  "Causas de justificación (arts. 31–33)": {
+    title: "Causas de justificación (arts. 31–33 CP)",
+    excerpt: "Legítima defensa, estado de necesidad y cumplimiento de un deber. Eliminan la antijuridicidad.",
+    full: (
+      <>
+        <p>Cuando concurren sus requisitos legales, la conducta no es antijurídica: la defensa exige agresión injusta actual o inminente, medio racional y ausencia de provocación; el estado de necesidad exige que el mal causado sea menor que el evitado.</p>
+        <p><strong>Meini:</strong> la antijuridicidad se analiza separada de la tipicidad.</p>
+      </>
+    )
+  },
+  "Imputabilidad / inimputabilidad (arts. 35–38)": {
+    title: "Imputabilidad / inimputabilidad (arts. 35–38 CP)",
+    excerpt: "Capacidad de comprender la ilicitud y de autodeterminarse. Disminuida reduce pena; inimputabilidad excluye culpabilidad.",
+    full: (
+      <>
+        <p>Se presume la imputabilidad. Trastornos mentales, embriaguez fortuita total o análogos pueden excluirla; si es disminuida, incide en la pena.</p>
+        <p><strong>Referencia doctrinal:</strong> Iván Meini, <em>Teoría del Delito</em>, capítulo sobre culpabilidad.</p>
+      </>
+    )
+  },
+  "Tentativa y desistimiento (arts. 48–49)": {
+    title: "Tentativa y desistimiento (arts. 48–49 CP)",
+    excerpt: "Inicio de ejecución sin resultado por causas ajenas; desistimiento voluntario excluye punibilidad.",
+    full: (
+      <>
+        <p>La tentativa reduce la pena conforme a reglas de dosificación; el desistimiento voluntario excluye la punibilidad cuando impide el resultado o abandona la ejecución.</p>
+        <p><strong>Meini:</strong> revela la ausencia de voluntad de consumación.</p>
+      </>
+    )
+  },
+};
+
+// Delitos (catálogo base – podrán ampliarse por Título/Capítulo más adelante)
 const DELITOS_CP = [
   "Homicidio doloso",
+  "Lesiones personales",
+  "Aborto provocado",
   "Hurto agravado",
   "Robo agravado",
-  "Violencia doméstica",
   "Estafa",
+  "Apropiación indebida",
+  "Peculado",
+  "Corrupción de servidores públicos",
+  "Falsificación de documento",
+  "Blanqueo de capitales",
+  "Violencia doméstica",
 ];
 
 // Mock de pena por tipo (solo para summary contextual)
 const PENA_POR_DELITO: Record<string,{min:number,max:number}> = {
   "Homicidio doloso": {min:144, max:360},
+  "Lesiones personales": {min:6, max:84},
+  "Aborto provocado": {min:12, max:72},
   "Hurto agravado": {min:24, max:84},
   "Robo agravado": {min:60, max:144},
-  "Violencia doméstica": {min:12, max:60},
   "Estafa": {min:12, max:72},
+  "Apropiación indebida": {min:6, max:48},
+  "Peculado": {min:72, max:180},
+  "Corrupción de servidores públicos": {min:48, max:144},
+  "Falsificación de documento": {min:24, max:96},
+  "Blanqueo de capitales": {min:60, max:144},
+  "Violencia doméstica": {min:12, max:60},
 };
 
 // ===========================================
@@ -162,8 +332,7 @@ function construirEncabezado(branding: Branding, destino: Destino | null, tipo: 
   const esSolicitudArchivoDef = (tipo === "Solicitud de archivo (Defensa)");
 
   if (esArchivoMP) {
-    // No lleva dirigido a… solo el rótulo del despacho MP
-    dirigido = "";
+    dirigido = ""; // solo rótulo del despacho MP
   } else if (esSolicitudArchivoDef && destino) {
     dirigido = `\nDirigido a: ${destino.nombre}`;
   } else if (destino) {
@@ -190,8 +359,8 @@ function ejecutarAura(input: AuraIn): AuraOut {
   }
 
   // Bloques sugeridos básicos
-  if (input.principiosCPP.includes("Proporcionalidad (art. 221)")) bloques.push("proporcionalidad-221");
-  if (input.principiosCP.includes("Legalidad (art. 32 Const.)")) bloques.push("legalidad");
+  if (input.principiosCPP.includes("Proporcionalidad de medidas cautelares (CPP art. 221)")) bloques.push("proporcionalidad-221");
+  if (input.principiosCP.some(p=>p.includes("Legalidad penal"))) bloques.push("legalidad");
   if (input.grado === "tentativa") bloques.push("tentativa-82");
 
   return {
@@ -360,8 +529,8 @@ export default function EscritosWizard() {
     cuando: "12/07/2025, 21:30",
     donde: "Calidonia, Ciudad de Panamá",
     relato: "Relato breve de los hechos…",
-    principiosCPP: ["Debido proceso", "Proporcionalidad (art. 221)"],
-    principiosCP: ["Legalidad (art. 32 Const.)", "Presunción de inocencia"],
+    principiosCPP: ["Derecho a la defensa (art. 10)", "Proporcionalidad de medidas cautelares (CPP art. 221)"],
+    principiosCP: ["Legalidad penal y tipicidad (arts. 4, 9, 12, 16)", "Dolo (arts. 26–27)"],
     delitoCP: "Robo agravado",
     estadio: "Intermedia",
     grado: "consumado",
@@ -383,6 +552,10 @@ export default function EscritosWizard() {
     fecha: hoyPA(),
   });
   const [texto, setTexto] = useState("");
+
+  // Tooltip/Modal state
+  const [hoverKey, setHoverKey] = useState<string|null>(null);
+  const [modalKey, setModalKey] = useState<string|null>(null);
 
   // Persistencia de branding
   useEffect(()=>{
@@ -406,13 +579,20 @@ export default function EscritosWizard() {
 
   const descargarPDF = async () => {
     if (!texto.trim()) return;
+    // Normaliza texto eliminando leyendas heredadas
+    const cleanText = texto
+      .replace(/Generado\s+con\s+FlowPen(al|eal)\s+by\s+Lex\s+Vence/gi, "")
+      .replace(/Con\s+la\s+venia\s+del\s+despacho,?\s*señor\s*juez:?/gi, "")
+      .replace(/Con\s+la\s+venia\s+del\s*juez:?/gi, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
     // Evitar error de build: usamos import dinámico NO literal
     const dynImport = (p: string) => import(/* @vite-ignore */ p as any);
     const pdfPath = ["..", "..", "/lib", "/pdf-generator"].join("");
     try {
       const mod: any = await dynImport(pdfPath);
-      const contentStyled = `\f${branding.fuente}
-` + texto;
+      const contentStyled = `\f${branding.fuente}\n` + cleanText;
       const blob = await mod.generatePDF({ title: `${tipo} – ${meta.numeroCausa}`, content: contentStyled, branding: { color: branding.colorPrimario, logoUrl: branding.logoDataUrl } });
       mod.downloadPDF(blob, `${tipo.toLowerCase().replace(/\s+/g,"-")}-${Date.now()}.pdf`);
       return;
@@ -423,19 +603,25 @@ export default function EscritosWizard() {
     // Fallback 1: DOC (abre en Word y permite guardar como PDF)
     try {
       const safe = (s:string)=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-      const html = `<!doctype html><html><head><meta charset=\"utf-8\"><style>body{font-family:${branding.fuente||"Times New Roman"};white-space:pre-wrap}</style></head><body>${safe(texto)}</body></html>`;
+      const html = `<!doctype html><html><head><meta charset=\"utf-8\"><style>body{font-family:${branding.fuente||"Times New Roman"};white-space:pre-wrap}</style></head><body>${safe(cleanText)}</body></html>`;
       const blob = new Blob([html], { type: "application/msword" });
       const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`${tipo.toLowerCase().replace(/\s+/g,"-")}-${Date.now()}.doc`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
       return;
     } catch {}
     // Fallback 2: TXT
-    const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([cleanText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`${tipo.toLowerCase().replace(/\s+/g,"-")}-${Date.now()}.txt`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   };
   const descargarDOC = () => {
     if (!texto.trim()) return;
+    const cleanText = texto
+      .replace(/Generado\s+con\s+FlowPen(al|eal)\s+by\s+Lex\s+Vence/gi, "")
+      .replace(/Con\s+la\s+venia\s+del\s+despacho,?\s*señor\s*juez:?/gi, "")
+      .replace(/Con\s+la\s+venia\s+del\s*juez:?/gi, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
     const safe = (s:string)=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:${branding.fuente||"Times New Roman"};white-space:pre-wrap}</style></head><body>${safe(texto)}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:${branding.fuente||"Times New Roman"};white-space:pre-wrap}</style></head><body>${safe(cleanText)}</body></html>`;
     const blob = new Blob([html], { type: "application/msword" });
     const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`${tipo.toLowerCase().replace(/\s+/g,"-")}-${Date.now()}.doc`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   };
@@ -566,7 +752,7 @@ export default function EscritosWizard() {
         {/* Paso 2 – Aura Penalista */}
         {step>=2 && (
           <Box>
-            <Head title="Paso 2 – Aura Penalista" description="Normaliza hechos, principios, delito y estadio; genera un resumen" />
+            <Head title="Paso 2 – Aura Penalista" description="Normaliza hechos, principios, delito y estadio; genera un resumen con doctrina (Meini)" />
             <Section className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
@@ -593,16 +779,16 @@ export default function EscritosWizard() {
                   <select multiple value={auraIn.principiosCPP} onChange={(e:any)=>{
                     const vals = Array.from(e.target.selectedOptions).map((o:any)=>o.value);
                     setAuraIn({...auraIn, principiosCPP: vals});
-                  }} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm min-h-[120px]">
+                  }} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm min-h-[160px]">
                     {PRINCIPIOS_CPP.map(p=> <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
-                  <Label>Principios (CP)</Label>
+                  <Label>Principios penales (CP)</Label>
                   <select multiple value={auraIn.principiosCP} onChange={(e:any)=>{
                     const vals = Array.from(e.target.selectedOptions).map((o:any)=>o.value);
                     setAuraIn({...auraIn, principiosCP: vals});
-                  }} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm min-h-[120px]">
+                  }} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm min-h-[160px]">
                     {PRINCIPIOS_CP.map(p=> <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
@@ -612,20 +798,46 @@ export default function EscritosWizard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label>Estadio procesal</Label>
-                  <Select value={auraIn.estadio} onChange={(v:any)=>setAuraIn({...auraIn, estadio:v})} options={["Preliminar","Formal","Intermedia","Juicio"]} />
-                </div>
-                <div>
-                  <Label>Grado de ejecución</Label>
-                  <Select value={auraIn.grado} onChange={(v:any)=>setAuraIn({...auraIn, grado:v})} options={["consumado","tentativa"]} />
-                </div>
-                <div>
-                  <Label>Rol</Label>
-                  <Select value={auraIn.rol} onChange={(v:any)=>setAuraIn({...auraIn, rol:v})} options={["Fiscalía","Defensa","Querella"]} />
-                </div>
-              </div>
+              {/* Doctrina con tooltips y botón Ver más */}
+              <Box>
+                <Head title="Doctrina de excepciones (Meini)" description="Pasa el cursor por los íconos para leer y haz clic en Ver más" />
+                <Section>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      "Error de tipo (art. 30)",
+                      "Error de prohibición (art. 39)",
+                      "Error en la punibilidad (doctrina)",
+                      "Error de tipo permisivo (doctrina)",
+                      "Causas de justificación (arts. 31–33)",
+                      "Imputabilidad / inimputabilidad (arts. 35–38)",
+                      "Tentativa y desistimiento (arts. 48–49)",
+                    ].map((k)=>{
+                      const item = DOCTRINA[k];
+                      return (
+                        <div key={k} className="relative">
+                          <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-800/50 px-3 py-2">
+                            <div className="text-xs font-medium">{item.title}</div>
+                            <button
+                              onMouseEnter={()=>setHoverKey(k)}
+                              onMouseLeave={()=>setHoverKey((prev)=> prev===k ? null : prev)}
+                              onFocus={()=>setHoverKey(k)}
+                              onBlur={()=>setHoverKey(null)}
+                              className="text-xs px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5"
+                              aria-label={`Ver explicación breve de ${item.title}`}
+                            >ℹ︎</button>
+                          </div>
+                          {hoverKey===k && (
+                            <div className="relative">
+                              <Tooltip title={item.title} excerpt={item.excerpt} onVerMas={()=>{ setModalKey(k); setHoverKey(null); }} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-3">Fuente doctrinal: Iván Meini, <em>Teoría del Delito</em> (citas adaptadas para uso didáctico).</div>
+                </Section>
+              </Box>
 
               <Box className="border-white/10">
                 <Head title="Resumen de Aura" />
@@ -732,6 +944,13 @@ export default function EscritosWizard() {
           </Box>
         )}
       </div>
+
+      {/* Modal de doctrina extendida */}
+      <Modal open={Boolean(modalKey)} onClose={()=>setModalKey(null)} title={modalKey ? DOCTRINA[modalKey].title : ""}>
+        {modalKey ? DOCTRINA[modalKey].full : null}
+        <hr className="my-3 border-white/10" />
+        <p className="text-[11px] text-slate-400">Cita doctrinal: Iván Meini, <em>Teoría del Delito</em> (referencias para estudio y argumentación). Este módulo ofrece explicación pedagógica; la cita literal debe consultarse en la obra.</p>
+      </Modal>
     </div>
   );
 }
