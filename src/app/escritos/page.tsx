@@ -1,505 +1,492 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, FileText, Download, Eye } from "lucide-react";
+
+// ===========================
+//  ⚠️ Nota de compatibilidad
+// ===========================
+// Para evitar errores de resolución de rutas en sandbox, este archivo NO depende
+// de componentes externos (Button/Card/etc.). Implementamos wrappers mínimos
+// con elementos nativos y Tailwind para que compile en cualquier entorno.
+
+// Wrappers UI básicos (autónomos)
+function UIContainer({ children, className = "" }: any) {
+  return <div className={`bg-slate-900/50 border border-white/10 rounded-2xl ${className}`}>{children}</div>;
+}
+function UIHeader({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="p-4 border-b border-white/10">
+      <div className="text-base font-semibold">{title}</div>
+      {description ? <div className="text-xs text-slate-400 mt-0.5">{description}</div> : null}
+    </div>
+  );
+}
+function UISection({ children, className = "" }: any) {
+  return <div className={`p-4 ${className}`}>{children}</div>;
+}
+function UIButton({ children, className = "", variant = "solid", disabled = false, onClick }: any) {
+  const base =
+    variant === "outline"
+      ? "border border-white/20 text-slate-100 hover:bg-white/5"
+      : variant === "secondary"
+      ? "bg-slate-700/70 hover:bg-slate-700 text-white"
+      : "bg-white/10 hover:bg-white/20 text-white";
+  const state = disabled ? "opacity-50 cursor-not-allowed" : "";
+  return (
+    <button onClick={onClick} disabled={disabled} className={`px-3 py-2 rounded-xl text-sm transition ${base} ${state} ${className}`}>
+      {children}
+    </button>
+  );
+}
+function UILabel({ children }: any) {
+  return <label className="block text-xs text-slate-300 mb-1">{children}</label>;
+}
+function UIInput({ value, onChange, placeholder = "", type = "text", inputMode }: any) {
+  return (
+    <input
+      type={type}
+      inputMode={inputMode}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20"
+    />
+  );
+}
+function UISelect({ value, onChange, children }: any) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm"
+    >
+      {children}
+    </select>
+  );
+}
+function UITextarea({ value, onChange, className = "" }: any) {
+  return (
+    <textarea
+      value={value}
+      onChange={onChange}
+      className={`w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 ${className}`}
+    />
+  );
+}
+
+// ===========================================
+//  Tipos y utilidades
+// ===========================================
+
+type Rol = "Fiscalía" | "Defensa" | "Juez";
+
+type EscritoTipo =
+  | "Acusación"
+  | "Querella"
+  | "Solicitud de Medida Cautelar"
+  | "Recurso de Anulación"
+  | "Recurso de Casación"
+  | "Archivo Provisional";
+
+interface MetaCaso {
+  juzgado: string;
+  circuito: string;
+  provincia: string;
+  numeroCausa: string;
+  noticiaCriminal?: string;
+  delito: string;
+  imputado: string;
+  victima?: string;
+  juez?: string;
+  fiscal?: string;
+  defensor?: string;
+  fecha: string; // dd/mm/aaaa
+}
+
+const hoyPA = () => new Date().toLocaleDateString("es-PA", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+function encabezado(meta: MetaCaso, _rol: Rol) {
+  const { juzgado, circuito, provincia, numeroCausa, noticiaCriminal, fecha } = meta;
+  const lineaNC = noticiaCriminal ? `\nNOTICIA CRIMINAL: ${noticiaCriminal}` : "";
+  return (
+    `REPÚBLICA DE PANAMÁ\nÓRGANO JUDICIAL\n\n${juzgado.toUpperCase()}\n${circuito} – ${provincia}\n\nPROCESO PENAL Nº ${numeroCausa}${lineaNC}\n\n` +
+    `Panamá, ${fecha || hoyPA()}\n\n`
+  );
+}
+
+// ===========================================
+//  Plantillas (machotes)
+// ===========================================
+
+function plantillaAcusacion(meta: MetaCaso, rol: Rol) {
+  const { delito, imputado, victima, fiscal } = meta;
+  return (
+    encabezado(meta, rol) +
+    `ESCRITO DE ACUSACIÓN\n\n` +
+    `Con la venia del despacho, señor Juez:\n\n` +
+    `I. HECHOS\n` +
+    `1. Se atribuye a ${imputado} la presunta comisión del delito de ${delito}${victima ? `, en perjuicio de ${victima}` : ""}.\n` +
+    `2. Los hechos se desarrollan conforme a lo actuado en investigación, constando en cadena de custodia, entrevistas y demás elementos colectados.\n\n` +
+    `II. FUNDAMENTOS DE DERECHO\n` +
+    `– Código Procesal Penal (arts. 340 y ss. – acusación).\n` +
+    `– Código Penal (tipicidad, antijuridicidad y culpabilidad del tipo imputado).\n` +
+    `– Principios: legalidad, motivación, proporcionalidad y debido proceso.\n\n` +
+    `III. PETICIÓN\n` +
+    `Se solicita admitir la presente acusación, ordenar la apertura a juicio oral y la práctica de las pruebas individualizadas en el listado anexo.\n\n` +
+    `Atentamente,\n${fiscal || "Fiscal de Circuito"}`
+  );
+}
+
+function plantillaQuerella(meta: MetaCaso, rol: Rol) {
+  const { delito, victima, defensor, imputado } = meta;
+  return (
+    encabezado(meta, rol) +
+    `QUERELLA\n\n` +
+    `Yo, ${victima || "[Nombre de la víctima]"}, en mi calidad de víctima/querellante, interpongo querella contra ${imputado} por el delito de ${delito}.\n\n` +
+    `I. HECHOS\nSe narran de manera clara, precisa y circunstanciada los hechos, indicando fecha, lugar, modo y ocasión.\n\n` +
+    `II. FUNDAMENTOS DE DERECHO\n– Código Procesal Penal (arts. sobre admisión de querella y legitimación).\n– Principios de tutela judicial efectiva y acceso a la justicia.\n\n` +
+    `III. PETICIÓN\nSe solicite la admisión de la presente querella, el reconocimiento de la calidad de víctima y se ordene la práctica de diligencias de investigación propuestas.\n\n` +
+    `Atentamente,\n${victima || "Querellante"}${defensor ? `\nPatrocinio: ${defensor}` : ""}`
+  );
+}
+
+function plantillaMedidaCautelar(meta: MetaCaso, rol: Rol) {
+  const { delito, imputado, fiscal } = meta;
+  return (
+    encabezado(meta, rol) +
+    `SOLICITUD DE MEDIDA CAUTELAR PERSONAL\n\n` +
+    `Con la venia del despacho, señor Juez:\n\n` +
+    `I. HECHOS\nSe investiga a ${imputado} por el delito de ${delito}. Consta noticia criminal, informe policial y entrevistas.\n\n` +
+    `II. FUNDAMENTOS DE DERECHO\n– Código Procesal Penal, art. 221 (proporcionalidad y subsidiariedad).\n– Requisitos: fumus boni iuris y periculum libertatis (riesgos de fuga, obstaculización o reiteración).\n\n` +
+    `III. PETICIÓN\nSe solicita imponer [detención provisional / presentación periódica / prohibición de salida / otra], debidamente motivada y proporcional al riesgo advertido.\n\n` +
+    `Atentamente,\n${fiscal || "Fiscal"}`
+  );
+}
+
+function plantillaAnulacion(meta: MetaCaso, rol: Rol) {
+  const { defensor, numeroCausa } = meta;
+  return (
+    encabezado(meta, rol) +
+    `RECURSO DE ANULACIÓN\n\n` +
+    `Contra la Sentencia recurrida dictada dentro de la causa N° ${numeroCausa}, respetuosamente expongo:\n\n` +
+    `I. ANTECEDENTES\nSe sintetizan actos procesales relevantes y la decisión impugnada.\n\n` +
+    `II. CAUSALES DE ANULACIÓN\n– Vulneración de garantías y/o errónea aplicación de la ley sustantiva/procesal.\n– Falta de motivación suficiente.\n\n` +
+    `III. PETITORIO\nSe solicite a la Sala Penal casar/anular la sentencia y dictar la que en derecho corresponda o disponer la reposición.\n\n` +
+    `Atentamente,\n${defensor || "Defensor"}`
+  );
+}
+
+function plantillaCasacion(meta: MetaCaso, rol: Rol) {
+  const { defensor, numeroCausa } = meta;
+  return (
+    encabezado(meta, rol) +
+    `RECURSO DE CASACIÓN\n\n` +
+    `Se formaliza recurso de casación contra la sentencia proferida en el proceso N° ${numeroCausa}, por las siguientes razones:\n\n` +
+    `I. BREVE SÍNTESIS FÁCTICA\nSe exponen sucintamente los hechos probados conforme a la sentencia.\n\n` +
+    `II. CAUSALES EN LA LEY\n– Infracción de ley sustantiva.\n– Infracción de normas procesales determinantes.\n\n` +
+    `III. ALCANCE\nSe solicita casar la decisión y adoptar el pronunciamiento de fondo o el reenvío conforme a derecho.\n\n` +
+    `Atentamente,\n${defensor || "Defensor"}`
+  );
+}
+
+function plantillaArchivoProvisional(meta: MetaCaso, rol: Rol) {
+  const { fiscal, noticiaCriminal, delito, imputado, victima } = meta;
+  return (
+    encabezado(meta, rol) +
+    `ARCHIVO PROVISIONAL N°\n\n` +
+    `NOTICIA CRIMINAL ${noticiaCriminal || "[N°]"}\n\n` +
+    `I. ANTECEDENTES\nSe investigó la presunta comisión del delito de ${delito} atribuida a ${imputado}${victima ? `, en perjuicio de ${victima}` : ""}.\n\n` +
+    `II. MOTIVACIÓN\nNo se han reunido elementos de convicción suficientes para sustentar acusación, sin perjuicio de continuar la investigación si surgen nuevos elementos.\n\n` +
+    `III. RESUELVO\nOrdenar el archivo provisional conforme al CPP.\n\n` +
+    `Atentamente,\n${fiscal || "Fiscal"}`
+  );
+}
+
+const PLANTILLAS: Record<EscritoTipo, (m: MetaCaso, r: Rol) => string> = {
+  "Acusación": plantillaAcusacion,
+  "Querella": plantillaQuerella,
+  "Solicitud de Medida Cautelar": plantillaMedidaCautelar,
+  "Recurso de Anulación": plantillaAnulacion,
+  "Recurso de Casación": plantillaCasacion,
+  "Archivo Provisional": plantillaArchivoProvisional,
+};
+
+// ===========================================
+//  Página
+// ===========================================
 
 export default function EscritosPage() {
-  const [tipoEscrito, setTipoEscrito] = useState("imputacion");
-  const [datos, setDatos] = useState<Record<string, string>>({});
-  const [previsualizacion, setPrevisualizacion] = useState("");
-
-  const templates: Record<string, any> = {
-    imputacion: {
-      nombre: "Imputación Formal",
-      campos: [
-        { id: "fecha", label: "Fecha del Hecho", tipo: "date" },
-        { id: "lugar", label: "Lugar", tipo: "text" },
-        { id: "modo", label: "Modo de Comisión", tipo: "textarea" },
-        { id: "tipo_penal", label: "Tipo Penal", tipo: "text" },
-        { id: "articulos", label: "Artículos del CP", tipo: "text" },
-      ],
-      generar: (d: Record<string, string>) => `
-IMPUTACIÓN FORMAL
-
-En el distrito judicial de Panamá, a los ${new Date().toLocaleDateString('es-PA')}.
-
-HECHOS JURÍDICAMENTE RELEVANTES:
-
-El día ${d.fecha}, en ${d.lugar}, se produjeron los siguientes hechos:
-
-${d.modo}
-
-CALIFICACIÓN JURÍDICA:
-
-Los hechos descritos constituyen prima facie el delito de ${d.tipo_penal}, tipificado en el ${d.articulos} del Código Penal de la República de Panamá.
-
-FUNDAMENTO LEGAL:
-- CPP Art. 276-279 (Imputación formal)
-- CP ${d.articulos}
-
-Respetuosamente,
-[FIRMA DEL FISCAL]
-      `
-    },
-    oposicion_cautelar: {
-      nombre: "Oposición a Medida Cautelar",
-      campos: [
-        { id: "riesgo_alegado", label: "Riesgo Alegado por Fiscalía", tipo: "text" },
-        { id: "arraigo", label: "Arraigo del Imputado", tipo: "textarea" },
-        { id: "alternativas", label: "Alternativas Propuestas", tipo: "textarea" },
-      ],
-      generar: (d: Record<string, string>) => `
-OPOSICIÓN A SOLICITUD DE MEDIDA CAUTELAR
-
-Señor Juez de Garantías:
-
-${d.arraigo}
-
-SOBRE EL RIESGO PROCESAL:
-
-La Fiscalía alega ${d.riesgo_alegado}, sin embargo, mi representado cuenta con arraigo suficiente y no representa riesgo de fuga ni de obstaculización.
-
-PROPORCIONALIDAD (CPP Art. 221):
-
-En aplicación del principio de proporcionalidad, solicitamos:
-
-${d.alternativas}
-
-FUNDAMENTO LEGAL:
-- CPP Art. 221 (Proporcionalidad de las medidas)
-- CPP Art. 222-230 (Medidas cautelares)
-- Constitución Art. 21-22 (Libertad personal)
-
-Respetuosamente,
-[FIRMA DEL DEFENSOR]
-      `
-    },
-    querella: {
-      nombre: "Querella Criminal",
-      campos: [
-        { id: "querellante", label: "Nombre del Querellante", tipo: "text" },
-        { id: "hechos", label: "Relato de Hechos", tipo: "textarea" },
-        { id: "tipificacion", label: "Tipificación Propuesta", tipo: "text" },
-        { id: "peticion", label: "Petición", tipo: "textarea" },
-      ],
-      generar: (d: Record<string, string>) => `
-QUERELLA CRIMINAL
-
-Señor Fiscal Superior:
-
-${d.querellante}, mayor de edad, con cédula de identidad personal número _____, comparezco ante usted para presentar QUERELLA CRIMINAL por los siguientes hechos:
-
-HECHOS:
-
-${d.hechos}
-
-TIPIFICACIÓN:
-
-Los hechos narrados configuran el delito de ${d.tipificacion}.
-
-PETICIÓN:
-
-${d.peticion}
-
-FUNDAMENTO LEGAL:
-- CPP Art. 93-105 (Querella y acción penal privada)
-
-Respetuosamente,
-[FIRMA DEL QUERELLANTE]
-      `
-    },
-    anulacion: {
-      nombre: "Recurso de Anulación",
-      campos: [
-        { id: "organo", label: "Órgano que Dictó la Resolución", tipo: "text" },
-        { id: "fecha_resolucion", label: "Fecha de la Resolución", tipo: "date" },
-        { id: "motivos", label: "Motivos de Anulación", tipo: "textarea" },
-        { id: "causal", label: "Causal Legal (CPP)", tipo: "text" },
-      ],
-      generar: (d: Record<string, string>) => `
-RECURSO DE ANULACIÓN
-
-Honorable Tribunal Superior:
-
-RECURSO DE ANULACIÓN contra la resolución dictada por ${d.organo} el día ${d.fecha_resolucion}.
-
-MOTIVOS:
-
-${d.motivos}
-
-CAUSAL:
-
-Se invoca el ${d.causal} del Código Procesal Penal.
-
-FUNDAMENTO LEGAL:
-- CPP Art. 437-440 (Recurso de anulación)
-- ${d.causal}
-
-PETICIÓN:
-
-Se anule la resolución impugnada y se dicte nueva resolución conforme a derecho.
-
-Respetuosamente,
-[FIRMA DEL RECURRENTE]
-      `
-    },
-    casacion_spa: {
-      nombre: "Recurso de Casación (Sistema Acusatorio)",
-      campos: [
-        { id: "sentencia_tjuicio", label: "Sentencia del Tribunal de Juicio", tipo: "text" },
-        { id: "causales", label: "Causales Invocadas", tipo: "textarea" },
-        { id: "agravios", label: "Agravios", tipo: "textarea" },
-        { id: "petitorio", label: "Petitorio", tipo: "textarea" },
-      ],
-      generar: (d: Record<string, string>) => `
-RECURSO DE CASACIÓN
-
-Honorable Corte Suprema de Justicia - Sala Penal:
-
-RECURSO DE CASACIÓN contra la sentencia dictada por ${d.sentencia_tjuicio}.
-
-CAUSALES:
-
-${d.causales}
-
-AGRAVIOS:
-
-${d.agravios}
-
-FUNDAMENTO LEGAL:
-- CPP Art. 441-442 (Recurso de casación)
-- CPP Art. 443 (Causales de casación)
-
-PETITORIO:
-
-${d.petitorio}
-
-Respetuosamente,
-[FIRMA DEL RECURRENTE]
-      `
-    },
-    casacion_inquisitivo: {
-      nombre: "Recurso de Casación (Sistema Inquisitivo)",
-      campos: [
-        { id: "sentencia_seg_instancia", label: "Sentencia de Segunda Instancia", tipo: "text" },
-        { id: "causal", label: "Causal de Casación", tipo: "text" },
-        { id: "errores_de_derecho", label: "Errores de Derecho Alegados", tipo: "textarea" },
-      ],
-      generar: (d: Record<string, string>) => `
-RECURSO DE CASACIÓN
-
-Honorable Corte Suprema de Justicia - Sala de lo Penal:
-
-RECURSO DE CASACIÓN contra la sentencia de segunda instancia dictada por ${d.sentencia_seg_instancia}.
-
-CAUSAL:
-
-Se invoca el ${d.causal} del Código Judicial.
-
-ERRORES DE DERECHO:
-
-${d.errores_de_derecho}
-
-FUNDAMENTO LEGAL:
-- Código Judicial Art. 2397-2413 (Recurso de casación penal)
-- ${d.causal}
-
-PETITORIO:
-
-Se case la sentencia impugnada por los vicios alegados.
-
-Respetuosamente,
-[FIRMA DEL RECURRENTE]
-      `
-    },
-    adhesion: {
-      nombre: "Adhesión a la Acusación",
-      campos: [
-        { id: "fiscalia_acusacion", label: "Acusación Fiscal", tipo: "text" },
-        { id: "hechos", label: "Hechos Complementarios", tipo: "textarea" },
-        { id: "articulos", label: "Artículos Adicionales", tipo: "text" },
-      ],
-      generar: (d: Record<string, string>) => `
-ADHESIÓN A LA ACUSACIÓN FISCAL
-
-Honorable Tribunal de Juicio:
-
-Me adhiero a la acusación presentada por ${d.fiscalia_acusacion}.
-
-HECHOS COMPLEMENTARIOS:
-
-${d.hechos}
-
-CALIFICACIÓN JURÍDICA ADICIONAL:
-
-Sin perjuicio de lo alegado por la Fiscalía, consideramos aplicable también ${d.articulos}.
-
-FUNDAMENTO LEGAL:
-- CPP Art. 93-105 (Querellante adhesivo)
-- CPP Art. 343 (Adhesión a la acusación)
-
-PETICIÓN:
-
-Se tenga por adhesionada esta parte a la acusación fiscal.
-
-Respetuosamente,
-[FIRMA DEL QUERELLANTE ADHESIVO]
-      `
-    },
-    acusacion_autonoma: {
-      nombre: "Acusación Autónoma",
-      campos: [
-        { id: "hechos", label: "Relato de Hechos", tipo: "textarea" },
-        { id: "pruebas_previas", label: "Pruebas Recabadas", tipo: "textarea" },
-        { id: "articulos", label: "Tipificación Legal", tipo: "text" },
-        { id: "peticion", label: "Petición", tipo: "textarea" },
-      ],
-      generar: (d: Record<string, string>) => `
-ACUSACIÓN AUTÓNOMA
-
-Honorable Tribunal de Juicio:
-
-El suscrito querellante, en ejercicio del derecho que me confiere el CPP, presento ACUSACIÓN AUTÓNOMA.
-
-HECHOS:
-
-${d.hechos}
-
-PRUEBAS:
-
-${d.pruebas_previas}
-
-CALIFICACIÓN JURÍDICA:
-
-Los hechos configuran el delito tipificado en ${d.articulos} del Código Penal.
-
-FUNDAMENTO LEGAL:
-- CPP Art. 104 (Acusación particular autónoma)
-- CP ${d.articulos}
-
-PETICIÓN:
-
-${d.peticion}
-
-Respetuosamente,
-[FIRMA DEL QUERELLANTE]
-      `
-    },
-    accion_resarcitoria: {
-      nombre: "Acción Resarcitoria (Daños y Perjuicios)",
-      campos: [
-        { id: "victima", label: "Nombre de la Víctima", tipo: "text" },
-        { id: "dano", label: "Daños Sufridos", tipo: "textarea" },
-        { id: "cuantificacion", label: "Cuantificación del Daño", tipo: "text" },
-        { id: "pretension", label: "Pretensión", tipo: "textarea" },
-      ],
-      generar: (d: Record<string, string>) => `
-ACCIÓN RESARCITORIA
-
-Honorable Tribunal:
-
-${d.victima}, en calidad de víctima del delito, ejerzo la ACCIÓN RESARCITORIA.
-
-DAÑOS SUFRIDOS:
-
-${d.dano}
-
-CUANTIFICACIÓN:
-
-Los daños y perjuicios se cuantifican en ${d.cuantificacion}.
-
-FUNDAMENTO LEGAL:
-- CPP Art. 73-82 (Acción civil resarcitoria)
-- Código Civil Art. 1644 y ss. (Responsabilidad civil)
-
-PRETENSIÓN:
-
-${d.pretension}
-
-Respetuosamente,
-[FIRMA DE LA VÍCTIMA O SU REPRESENTANTE]
-      `
+  const [rol, setRol] = useState<Rol>("Fiscalía");
+  const [tipo, setTipo] = useState<EscritoTipo>("Acusación");
+
+  const [meta, setMeta] = useState<MetaCaso>({
+    juzgado: "Juzgado de Garantías del Primer Circuito Judicial",
+    circuito: "Primer Circuito Judicial",
+    provincia: "Panamá",
+    numeroCausa: "2025-000000",
+    noticiaCriminal: "",
+    delito: "Homicidio Doloso (Tentativa)",
+    imputado: "[Nombre del Imputado]",
+    victima: "[Nombre de la Víctima]",
+    juez: "[Nombre del Juez]",
+    fiscal: "[Nombre del Fiscal]",
+    defensor: "[Nombre del Defensor]",
+    fecha: hoyPA(),
+  });
+
+  const [texto, setTexto] = useState("");
+
+  const generar = () => {
+    const tpl = PLANTILLAS[tipo];
+    const borrador = tpl(meta, rol);
+    setTexto(borrador);
+  };
+
+  const limpiar = () => setTexto("");
+
+  // Exportar PDF (lazy import del generador); fallback TXT si no existe
+  const descargarPDF = async () => {
+    if (!texto.trim()) return;
+    try {
+      const mod = await import("../../lib/pdf-generator");
+      const blob = await mod.generatePDF({
+        title: `${tipo} – ${meta.numeroCausa}`,
+        content: texto,
+        branding: JSON.parse(localStorage.getItem("flowpenal_brand") || "{}"),
+      });
+      mod.downloadPDF(blob, `${tipo.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.pdf`);
+    } catch (e) {
+      const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${tipo.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     }
   };
 
-  const generarEscrito = () => {
-    const template = templates[tipoEscrito];
-    if (!template) return;
-
-    const texto = template.generar(datos);
-    setPrevisualizacion(texto);
+  // Exportar como DOC (HTML simple)
+  const descargarDOC = () => {
+    if (!texto.trim()) return;
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>${tipo}</title></head><body><pre style="font-family: 'Times New Roman', serif; white-space: pre-wrap;">${texto
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")}</pre></body></html>`;
+    const blob = new Blob([html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${tipo.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   };
 
+  // Casos de prueba (para validar el flujo rápidamente)
+  const testCase = (id: string) => {
+    if (id === "acusacion-homicidio") {
+      setRol("Fiscalía");
+      setTipo("Acusación");
+      setMeta((m) => ({
+        ...m,
+        delito: "Homicidio Doloso (Tentativa)",
+        imputado: "SANTIAGO ARAÚZ CARRETERO",
+        victima: "MARIO AUGUSTO RIVERA DELGADO",
+        numeroCausa: "201300005960",
+        juez: "[Juez de Garantías]",
+        fiscal: "Licda. Yuriel Medina Rojas",
+        fecha: hoyPA(),
+      }));
+    } else if (id === "anulacion-violacion") {
+      setRol("Fiscalía");
+      setTipo("Recurso de Anulación");
+      setMeta((m) => ({
+        ...m,
+        delito: "Violación Agravada",
+        imputado: "ANÍBAL JAMETH SÁNCHEZ GONZÁLEZ",
+        victima: "MEYBELINE MICHELL VILLAVERDE MOSQUERA",
+        numeroCausa: "202000049001",
+        fiscal: "[Fiscal Sustentante]",
+        fecha: hoyPA(),
+      }));
+    } else if (id === "archivo-provisional") {
+      setRol("Fiscalía");
+      setTipo("Archivo Provisional");
+      setMeta((m) => ({
+        ...m,
+        delito: "Violación Agravada",
+        imputado: "BLEIDER STEVEN SEIJAS",
+        victima: "A.A.C.C.",
+        noticiaCriminal: "202400043614",
+        numeroCausa: "2024-000000",
+        fiscal: "[Fiscal de Sección]",
+        fecha: "14/01/2025",
+      }));
+    } else if (id === "querella-basica") {
+      setRol("Defensa");
+      setTipo("Querella");
+      setMeta((m) => ({
+        ...m,
+        delito: "Injurias y Calumnias",
+        imputado: "[Imputado]",
+        victima: "[Querellante]",
+        numeroCausa: "2025-111111",
+        fecha: hoyPA(),
+      }));
+    } else if (id === "cautelar-riesgos") {
+      setRol("Fiscalía");
+      setTipo("Solicitud de Medida Cautelar");
+      setMeta((m) => ({
+        ...m,
+        delito: "Robo Agravado",
+        imputado: "[Imputado]",
+        numeroCausa: "2025-222222",
+        fecha: hoyPA(),
+      }));
+    }
+  };
+
+  // Generación automática al cambiar meta/tipo si el texto está vacío
+  useEffect(() => {
+    if (!texto.trim()) {
+      const tpl = PLANTILLAS[tipo];
+      setTexto(tpl(meta, rol));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rol, tipo, meta]);
+
+  const puedeExportar = Boolean(texto.trim());
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       {/* Header */}
-      <header className="border-b border-border-gray bg-surface-dark/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-blue-lex hover:text-blue-lex/80">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-semibold">Volver</span>
+      <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur sticky top-0 z-20">
+        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
+          <Link href="/" className="inline-flex items-center text-slate-300 hover:text-white transition text-sm">
+            ← Inicio
           </Link>
-          <h1 className="text-xl font-poppins font-bold text-foreground">
-            FlowPenal <span className="text-gold">by Lex Vence</span>
-          </h1>
+          <div className="ml-auto flex items-center gap-2">
+            <UIButton onClick={() => testCase("acusacion-homicidio")} className="!text-xs" variant="outline">Test Acusación</UIButton>
+            <UIButton onClick={() => testCase("anulacion-violacion")} className="!text-xs" variant="outline">Test Anulación</UIButton>
+            <UIButton onClick={() => testCase("archivo-provisional")} className="!text-xs" variant="outline">Test Archivo</UIButton>
+            <UIButton onClick={() => testCase("querella-basica")} className="!text-xs" variant="outline">Test Querella</UIButton>
+            <UIButton onClick={() => testCase("cautelar-riesgos")} className="!text-xs" variant="outline">Test Cautelar</UIButton>
+          </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-12 max-w-6xl">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-blue-lex/10 rounded-lg flex items-center justify-center">
-              <FileText className="w-6 h-6 text-blue-lex" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-poppins font-bold text-foreground">
-              Generador de Escritos
-            </h1>
-          </div>
-          <p className="text-muted-foreground text-lg">
-            Genere escritos profesionales con fundamento legal automático y su branding personalizado.
-          </p>
-        </div>
+      <div className="mx-auto max-w-6xl px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Configuración */}
+        <UIContainer className="lg:col-span-1">
+          <UIHeader title="Configuración del escrito" description="Rol, tipo y metadatos del caso" />
+          <UISection className="space-y-4">
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <UILabel>Rol</UILabel>
+                <UISelect value={rol} onChange={(v: Rol) => setRol(v)}>
+                  <option value="Fiscalía">Fiscalía</option>
+                  <option value="Defensa">Defensa</option>
+                  <option value="Juez">Juez</option>
+                </UISelect>
+              </div>
+              <div>
+                <UILabel>Tipo de escrito</UILabel>
+                <UISelect value={tipo} onChange={(v: EscritoTipo) => setTipo(v)}>
+                  <option value="Acusación">Acusación</option>
+                  <option value="Querella">Querella</option>
+                  <option value="Solicitud de Medida Cautelar">Solicitud de Medida Cautelar</option>
+                  <option value="Recurso de Anulación">Recurso de Anulación</option>
+                  <option value="Recurso de Casación">Recurso de Casación</option>
+                  <option value="Archivo Provisional">Archivo Provisional</option>
+                </UISelect>
+              </div>
 
-        <Tabs defaultValue="formulario" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 bg-surface-dark border border-border-gray">
-            <TabsTrigger value="formulario">Formulario</TabsTrigger>
-            <TabsTrigger value="preview">Previsualización</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="formulario" className="space-y-6">
-            <Card className="border-border-gray bg-card shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-2xl font-poppins">Seleccione el Tipo de Escrito</CardTitle>
-                <CardDescription>Plantillas prediseñadas con fundamento legal</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-
-                <div className="space-y-2">
-                  <Label htmlFor="tipo" className="text-base">Tipo de Escrito</Label>
-                  <Select value={tipoEscrito} onValueChange={setTipoEscrito}>
-                    <SelectTrigger id="tipo" className="bg-background border-border-gray text-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="imputacion">Imputación Formal</SelectItem>
-                      <SelectItem value="oposicion_cautelar">Oposición a Medida Cautelar</SelectItem>
-                      <SelectItem value="querella">Querella Criminal</SelectItem>
-                      <SelectItem value="anulacion">Recurso de Anulación</SelectItem>
-                      <SelectItem value="casacion_spa">Recurso de Casación (SPA)</SelectItem>
-                      <SelectItem value="casacion_inquisitivo">Recurso de Casación (Inquisitivo)</SelectItem>
-                      <SelectItem value="adhesion">Adhesión a la Acusación</SelectItem>
-                      <SelectItem value="acusacion_autonoma">Acusación Autónoma</SelectItem>
-                      <SelectItem value="accion_resarcitoria">Acción Resarcitoria</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div>
+                <UILabel>Juzgado</UILabel>
+                <UIInput value={meta.juzgado} onChange={(e: any) => setMeta({ ...meta, juzgado: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <UILabel>Circuito</UILabel>
+                  <UIInput value={meta.circuito} onChange={(e: any) => setMeta({ ...meta, circuito: e.target.value })} />
                 </div>
+                <div>
+                  <UILabel>Provincia</UILabel>
+                  <UIInput value={meta.provincia} onChange={(e: any) => setMeta({ ...meta, provincia: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <UILabel>N° de Causa</UILabel>
+                  <UIInput value={meta.numeroCausa} onChange={(e: any) => setMeta({ ...meta, numeroCausa: e.target.value })} />
+                </div>
+                <div>
+                  <UILabel>Noticia Criminal</UILabel>
+                  <UIInput value={meta.noticiaCriminal || ""} onChange={(e: any) => setMeta({ ...meta, noticiaCriminal: e.target.value })} />
+                </div>
+              </div>
 
-                {templates[tipoEscrito] && (
-                  <>
-                    <div className="border-t border-border-gray pt-6">
-                      <h3 className="font-poppins font-semibold text-lg text-foreground mb-4">
-                        {templates[tipoEscrito].nombre}
-                      </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <UILabel>Delito</UILabel>
+                  <UIInput value={meta.delito} onChange={(e: any) => setMeta({ ...meta, delito: e.target.value })} />
+                </div>
+                <div>
+                  <UILabel>Fecha</UILabel>
+                  <UIInput value={meta.fecha} onChange={(e: any) => setMeta({ ...meta, fecha: e.target.value })} />
+                </div>
+              </div>
 
-                      <div className="space-y-4">
-                        {templates[tipoEscrito].campos.map((campo: any) => (
-                          <div key={campo.id} className="space-y-2">
-                            <Label htmlFor={campo.id} className="text-base">{campo.label}</Label>
-                            {campo.tipo === "textarea" ? (
-                              <Textarea
-                                id={campo.id}
-                                value={datos[campo.id] || ""}
-                                onChange={(e) => setDatos({ ...datos, [campo.id]: e.target.value })}
-                                className="bg-background border-border-gray text-base min-h-[100px]"
-                                placeholder={`Ingrese ${campo.label.toLowerCase()}`}
-                              />
-                            ) : (
-                              <Input
-                                id={campo.id}
-                                type={campo.tipo}
-                                value={datos[campo.id] || ""}
-                                onChange={(e) => setDatos({ ...datos, [campo.id]: e.target.value })}
-                                className="bg-background border-border-gray text-base"
-                                placeholder={`Ingrese ${campo.label.toLowerCase()}`}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <UILabel>Imputado</UILabel>
+                  <UIInput value={meta.imputado} onChange={(e: any) => setMeta({ ...meta, imputado: e.target.value })} />
+                </div>
+                <div>
+                  <UILabel>Víctima</UILabel>
+                  <UIInput value={meta.victima || ""} onChange={(e: any) => setMeta({ ...meta, victima: e.target.value })} />
+                </div>
+              </div>
 
-                    <Button
-                      onClick={generarEscrito}
-                      className="w-full bg-blue-lex hover:bg-blue-lex/90 text-white font-semibold text-lg py-6"
-                    >
-                      <Eye className="w-5 h-5 mr-2" />
-                      Generar Previsualización
-                    </Button>
-                  </>
-                )}
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <UILabel>Juez</UILabel>
+                  <UIInput value={meta.juez || ""} onChange={(e: any) => setMeta({ ...meta, juez: e.target.value })} />
+                </div>
+                <div>
+                  <UILabel>Fiscal</UILabel>
+                  <UIInput value={meta.fiscal || ""} onChange={(e: any) => setMeta({ ...meta, fiscal: e.target.value })} />
+                </div>
+                <div>
+                  <UILabel>Defensor</UILabel>
+                  <UIInput value={meta.defensor || ""} onChange={(e: any) => setMeta({ ...meta, defensor: e.target.value })} />
+                </div>
+              </div>
 
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <div className="flex gap-2 pt-1">
+                <UIButton onClick={generar} className="flex-1">Generar</UIButton>
+                <UIButton onClick={limpiar} variant="secondary">Limpiar</UIButton>
+              </div>
+            </div>
+          </UISection>
+        </UIContainer>
 
-          <TabsContent value="preview" className="space-y-6">
-            <Card className="border-border-gray bg-card shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-2xl font-poppins">Previsualización del Escrito</CardTitle>
-                <CardDescription>Puede editar el texto antes de descargar</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-
-                {previsualizacion ? (
-                  <>
-                    <Textarea
-                      value={previsualizacion}
-                      onChange={(e) => setPrevisualizacion(e.target.value)}
-                      className="bg-background border-border-gray text-base font-merriweather min-h-[500px]"
-                    />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Button
-                        variant="outline"
-                        className="border-blue-lex text-blue-lex hover:bg-blue-lex hover:text-white"
-                      >
-                        <Download className="w-5 h-5 mr-2" />
-                        Descargar DOCX
-                      </Button>
-                      <Button
-                        className="bg-gold hover:bg-gold/90 text-bg-gradient-start"
-                      >
-                        <Download className="w-5 h-5 mr-2" />
-                        Descargar PDF con Branding
-                      </Button>
-                    </div>
-
-                    <div className="bg-gold/5 p-4 rounded-lg border border-gold/20">
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-semibold text-gold">Tip:</span> El PDF incluirá su logo,
-                        colores institucionales y tipografía configurados en "Mi Marca".
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <FileText className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                    <p className="text-lg">Complete el formulario y genere la previsualización</p>
-                  </div>
-                )}
-
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Editor */}
+        <UIContainer className="lg:col-span-2">
+          <UIHeader title="Borrador editable" description="Revisa y ajusta la redacción antes de exportar" />
+          <UISection className="space-y-3">
+            <UITextarea className="min-h-[480px]" value={texto} onChange={(e: any) => setTexto(e.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              <UIButton onClick={descargarPDF} disabled={!puedeExportar}>Descargar PDF</UIButton>
+              <UIButton onClick={descargarDOC} disabled={!puedeExportar} variant="secondary">Descargar DOC</UIButton>
+            </div>
+          </UISection>
+        </UIContainer>
       </div>
     </div>
   );
