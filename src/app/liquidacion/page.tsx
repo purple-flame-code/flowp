@@ -1,540 +1,843 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Scale, Download, Plus, Trash2 } from "lucide-react";
 
-type Medida = {
-  tipo: string;
-  desde: string;
-  hasta: string;
-  presentaciones?: number;
-};
+/**
+ * Liquidación de Penas – Unificación hasta 3 delitos
+ * --------------------------------------------------
+ * - Unifica penas (hasta 3 delitos) con tope legal configurable (p.ej., 50 años).
+ * - Calcula 1/2 y 2/3, abonos por cautelares (CPP 232) y conmutación por trabajo/estudio/conducta (CP 99-104).
+ * - Exporta a PDF (si existe /lib/pdf-generator) y fallback a DOC.
+ *
+ * Convenciones de cómputo interno:
+ * - 1 mes = 30 días (cómputo administrativo).
+ * - 1 año = 12 meses = 360 días.
+ * - Todos los importes se normalizan a días para operar y luego se formatean a A/M/D.
+ */
 
-type Conmutacion = {
-  tipo: string;
+// =====================
+// Tipos y utilidades
+// =====================
+type Rol = "Defensa" | "Fiscalía" | "Juez";
+
+interface PenaImpuesta {
+  anios: number;
+  meses: number;
   dias: number;
-};
+}
 
+interface Abonos {
+  // Medidas cautelares (CPP 232) y otros abonos líquidos en días
+  detencionPreventivaDias: number;
+  arrestoDomiciliarioDias: number;
+  otrasMedidasDias: number;
+
+  // Conmutaciones (CP 99-104), expresadas ya en días de abono líquido
+  trabajoDias: number;
+  estudioDias: number;
+  conductaDias: number;
+}
+
+interface DelitoEntrada {
+  nombre: string;
+  pena: PenaImpuesta;
+  abonos: Abonos;
+  fechaInicio?: string; // opcional, para referencia
+}
+
+interface ResultadoDelito {
+  nombre: string;
+  baseDias: number;     // pena base en días
+  abonosDias: number;   // total de abonos en días (cautelares + conmutaciones)
+  netoDias: number;     // base - abonos (no menor que 0)
+}
+
+interface UnificacionResultado {
+  totalBaseDias: number;   // suma de bases
+  totalAbonosDias: number; // suma de abonos
+  totalNetoDias: number;   // totalBase - totalAbonos
+  topadoDias: number;      // si hay tope legal, min(totalBase, tope); se recalcula neto en función del tope
+  netoTrasTopeDias: number;// max(topado - totalAbonos, 0)
+  mitadDias: number;       // 1/2 del topado
+  dosTercioDias: number;   // 2/3 del topado
+}
+
+// Utils tiempo
+const YMD = { DAYS_PER_MONTH: 30, MONTHS_PER_YEAR: 12, DAYS_PER_YEAR: 360 };
+const clamp0 = (n: number) => (n < 0 ? 0 : n);
+const toDays = (p: PenaImpuesta) =>
+  p.anios * YMD.DAYS_PER_YEAR + p.meses * YMD.DAYS_PER_MONTH + p.dias;
+
+function fromDays(days: number) {
+  const a = Math.floor(days / YMD.DAYS_PER_YEAR);
+  const remA = days - a * YMD.DAYS_PER_YEAR;
+  const m = Math.floor(remA / YMD.DAYS_PER_MONTH);
+  const d = remA - m * YMD.DAYS_PER_MONTH;
+  return { anios: a, meses: m, dias: d };
+}
+
+function fmtYMD(days: number) {
+  const { anios, meses, dias } = fromDays(Math.round(days));
+  const parts = [];
+  if (anios) parts.push(`${anios} año${anios !== 1 ? "s" : ""}`);
+  if (meses) parts.push(`${meses} mes${meses !== 1 ? "es" : ""}`);
+  if (dias || parts.length === 0) parts.push(`${dias} día${dias !== 1 ? "s" : ""}`);
+  return parts.join(" ");
+}
+
+function sumAbonos(a: Abonos) {
+  return (
+    (a.detencionPreventivaDias || 0) +
+    (a.arrestoDomiciliarioDias || 0) +
+    (a.otrasMedidasDias || 0) +
+    (a.trabajoDias || 0) +
+    (a.estudioDias || 0) +
+    (a.conductaDias || 0)
+  );
+}
+
+// =====================
+// UI mínimos
+// =====================
+function Box({ children, className = "" }: any) {
+  return (
+    <div className={`bg-slate-900/50 border border-white/10 rounded-2xl ${className}`}>
+      {children}
+    </div>
+  );
+}
+function Head({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="p-4 border-b border-white/10">
+      <div className="text-base font-semibold">{title}</div>
+      {description ? (
+        <div className="text-xs text-slate-400 mt-0.5">{description}</div>
+      ) : null}
+    </div>
+  );
+}
+function Section({ children, className = "" }: any) {
+  return <div className={`p-4 ${className}`}>{children}</div>;
+}
+function Label({ children }: any) {
+  return <label className="block text-xs text-slate-300 mb-1">{children}</label>;
+}
+function Input({
+  value,
+  onChange,
+  placeholder = "",
+  type = "text",
+  min,
+}: any) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      min={min}
+      className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20"
+    />
+  );
+}
+function Select({
+  value,
+  onChange,
+  options,
+}: {
+  value: any;
+  onChange: (v: any) => void;
+  options: string[];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm"
+    >
+      {options.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
+  );
+}
+function Textarea({ value, onChange, className = "" }: any) {
+  return (
+    <textarea
+      value={value}
+      onChange={onChange}
+      className={`w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 ${className}`}
+    />
+  );
+}
+function Btn({
+  children,
+  onClick,
+  disabled = false,
+  variant = "solid",
+  className = "",
+}: any) {
+  const base =
+    variant === "outline"
+      ? "border border-white/20 text-slate-100 hover:bg-white/5"
+      : variant === "secondary"
+      ? "bg-slate-700/70 hover:bg-slate-700 text-white"
+      : "bg-white/10 hover:bg-white/20 text-white";
+  const state = disabled ? "opacity-50 cursor-not-allowed" : "";
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-3 py-2 rounded-xl text-sm transition ${base} ${state} ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// =====================
+// Página
+// =====================
 export default function LiquidacionPage() {
-  const [penaAnos, setPenaAnos] = useState("");
-  const [penaMeses, setPenaMeses] = useState("");
-  const [penaDias, setPenaDias] = useState("");
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [medidas, setMedidas] = useState<Medida[]>([]);
-  const [conmutaciones, setConmutaciones] = useState<Conmutacion[]>([]);
-  const [resultado, setResultado] = useState<any>(null);
+  const [rol, setRol] = useState<Rol>("Defensa");
 
-  const agregarMedida = () => {
-    setMedidas([...medidas, { tipo: "detencion_preventiva", desde: "", hasta: "", presentaciones: 0 }]);
-  };
+  // Tope legal (editable). Por defecto 50 años.
+  const [topeLegalAnios, setTopeLegalAnios] = useState<number>(50);
 
-  const eliminarMedida = (index: number) => {
-    setMedidas(medidas.filter((_, i) => i !== index));
-  };
+  // Delito 1 (obligatorio)
+  const [d1, setD1] = useState<DelitoEntrada>({
+    nombre: "Robo agravado",
+    pena: { anios: 6, meses: 0, dias: 0 },
+    abonos: {
+      detencionPreventivaDias: 120,
+      arrestoDomiciliarioDias: 0,
+      otrasMedidasDias: 0,
+      trabajoDias: 0,
+      estudioDias: 0,
+      conductaDias: 0,
+    },
+    fechaInicio: "",
+  });
 
-  const actualizarMedida = (index: number, campo: string, valor: any) => {
-    const nuevasMedidas = [...medidas];
-    (nuevasMedidas[index] as any)[campo] = valor;
-    setMedidas(nuevasMedidas);
-  };
+  // Delitos adicionales (opcionales)
+  const [usarD2, setUsarD2] = useState<boolean>(false);
+  const [usarD3, setUsarD3] = useState<boolean>(false);
 
-  const agregarConmutacion = () => {
-    setConmutaciones([...conmutaciones, { tipo: "trabajo", dias: 0 }]);
-  };
+  const [d2, setD2] = useState<DelitoEntrada>({
+    nombre: "Lesiones personales",
+    pena: { anios: 2, meses: 6, dias: 0 },
+    abonos: {
+      detencionPreventivaDias: 0,
+      arrestoDomiciliarioDias: 0,
+      otrasMedidasDias: 0,
+      trabajoDias: 0,
+      estudioDias: 0,
+      conductaDias: 0,
+    },
+    fechaInicio: "",
+  });
 
-  const eliminarConmutacion = (index: number) => {
-    setConmutaciones(conmutaciones.filter((_, i) => i !== index));
-  };
+  const [d3, setD3] = useState<DelitoEntrada>({
+    nombre: "Amenazas",
+    pena: { anios: 1, meses: 0, dias: 0 },
+    abonos: {
+      detencionPreventivaDias: 0,
+      arrestoDomiciliarioDias: 0,
+      otrasMedidasDias: 0,
+      trabajoDias: 0,
+      estudioDias: 0,
+      conductaDias: 0,
+    },
+    fechaInicio: "",
+  });
 
-  const actualizarConmutacion = (index: number, campo: string, valor: any) => {
-    const nuevasConmutaciones = [...conmutaciones];
-    (nuevasConmutaciones[index] as any)[campo] = valor;
-    setConmutaciones(nuevasConmutaciones);
-  };
+  // Observaciones y texto final
+  const [observaciones, setObservaciones] = useState<string>("");
 
-  const calcularDiasEntreFechas = (desde: string, hasta: string): number => {
-    const d1 = new Date(desde);
-    const d2 = new Date(hasta);
-    return Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
-  };
-
-  const calcular = () => {
-    if (!penaAnos && !penaMeses && !penaDias) {
-      alert("Por favor ingrese la pena impuesta");
-      return;
-    }
-    if (!fechaInicio) {
-      alert("Por favor ingrese la fecha de inicio de cumplimiento");
-      return;
-    }
-
-    // Total días de pena
-    const totalDias = (parseInt(penaAnos || "0") * 365) + (parseInt(penaMeses || "0") * 30) + parseInt(penaDias || "0");
-
-    // Calcular abonos según CPP 232
-    let abonosMedidas = 0;
-    medidas.forEach(medida => {
-      if (!medida.desde || !medida.hasta) return;
-
-      const dias = calcularDiasEntreFechas(medida.desde, medida.hasta);
-
-      switch (medida.tipo) {
-        case "detencion_preventiva":
-        case "arresto_domiciliario":
-          abonosMedidas += dias; // 1:1
-          break;
-        case "prohibicion_salida":
-          abonosMedidas += Math.floor(dias / 5); // 1 día de pena por 5 días
-          break;
-        case "presentacion_periodica":
-          abonosMedidas += Math.floor((medida.presentaciones || 0) / 5); // 1 día por 5 presentaciones
-          break;
-        case "permanencia_domicilio":
-          abonosMedidas += Math.floor(dias / 2); // 1 día de pena por 2 días
-          break;
-      }
-    });
-
-    // Calcular conmutación según CP 99-104
-    let abonosConmutacion = 0;
-    conmutaciones.forEach(conm => {
-      const dias = parseInt(conm.dias.toString()) || 0;
-
-      switch (conm.tipo) {
-        case "trabajo":
-        case "estudio":
-          // 2 días de trabajo/estudio = 1 día de pena
-          abonosConmutacion += Math.floor(dias / 2);
-          break;
-        case "instruccion":
-        case "tratamiento":
-          // 3 días de instrucción/tratamiento = 1 día de pena
-          abonosConmutacion += Math.floor(dias / 3);
-          break;
-        case "conducta":
-          // Conducta ejemplar: variable según auto judicial
-          abonosConmutacion += Math.floor(dias * 0.1); // 10% estimado
-          break;
-      }
-    });
-
-    const saldoEfectivo = Math.max(totalDias - abonosMedidas - abonosConmutacion, 0);
-
-    // Calcular fechas clave
-    const inicio = new Date(fechaInicio);
-
-    const mediaPena = new Date(inicio);
-    mediaPena.setDate(mediaPena.getDate() + Math.floor(saldoEfectivo / 2));
-
-    const dosTercios = new Date(inicio);
-    dosTercios.setDate(dosTercios.getDate() + Math.floor((saldoEfectivo * 2) / 3));
-
-    const cumplimiento = new Date(inicio);
-    cumplimiento.setDate(cumplimiento.getDate() + saldoEfectivo);
-
-    setResultado({
-      totalDias,
-      abonosMedidas,
-      abonosConmutacion,
-      saldoEfectivo,
-      fechas: {
-        mediaPena: mediaPena.toISOString().split('T')[0],
-        dosTercios: dosTercios.toISOString().split('T')[0],
-        cumplimiento: cumplimiento.toISOString().split('T')[0],
-      },
-      fundamento: [
-        "CPP Art. 232 (Abono de medidas cautelares)",
-        "CPP Art. 500-514 (Ejecución de la pena)",
-        "CP Art. 99-104 (Conmutación y redención de pena)",
-        "CP Art. 93 (Libertad condicional: requiere ½ de pena)"
-      ]
-    });
-  };
-
-  const nombreMedida = (tipo: string) => {
-    const nombres: Record<string, string> = {
-      "detencion_preventiva": "Detención Preventiva (1:1)",
-      "arresto_domiciliario": "Arresto Domiciliario (1:1)",
-      "prohibicion_salida": "Prohibición de Salida (1:5)",
-      "presentacion_periodica": "Presentación Periódica",
-      "permanencia_domicilio": "Permanencia en Domicilio (1:2)",
+  // Cálculo por delito → ResultadoDelito
+  function liquidarDelito(inD: DelitoEntrada): ResultadoDelito {
+    const baseDias = toDays(inD.pena);
+    const ab = sumAbonos(inD.abonos);
+    const neto = clamp0(baseDias - ab);
+    return {
+      nombre: inD.nombre || "(delito)",
+      baseDias,
+      abonosDias: ab,
+      netoDias: neto,
     };
-    return nombres[tipo] || tipo;
-  };
+  }
+
+  // Acumulación con tope legal
+  const unificado: UnificacionResultado = useMemo(() => {
+    const r1 = liquidarDelito(d1);
+    const partes: ResultadoDelito[] = [r1];
+    if (usarD2) partes.push(liquidarDelito(d2));
+    if (usarD3) partes.push(liquidarDelito(d3));
+
+    const totalBaseDias = partes.reduce((acc, p) => acc + p.baseDias, 0);
+    const totalAbonosDias = partes.reduce((acc, p) => acc + p.abonosDias, 0);
+
+    const topeDias = topeLegalAnios * YMD.DAYS_PER_YEAR; // 50 * 360 por convención interna
+    const topadoDias = Math.min(totalBaseDias, topeDias);
+
+    // Ojo: los abonos se aplican contra el topado para calcular el neto final efectivo
+    const netoTrasTopeDias = clamp0(topadoDias - totalAbonosDias);
+
+    const mitadDias = Math.floor(topadoDias / 2);
+    const dosTercioDias = Math.floor((topadoDias * 2) / 3);
+
+    return {
+      totalBaseDias,
+      totalAbonosDias,
+      totalNetoDias: clamp0(totalBaseDias - totalAbonosDias),
+      topadoDias,
+      netoTrasTopeDias,
+      mitadDias,
+      dosTercioDias,
+    };
+  }, [d1, d2, d3, usarD2, usarD3, topeLegalAnios]);
+
+  // Informe en texto
+  const informe = useMemo(() => {
+    const bloques: string[] = [];
+
+    const dets: { label: string; del: DelitoEntrada }[] = [
+      { label: "Delito 1", del: d1 },
+    ];
+    if (usarD2) dets.push({ label: "Delito 2", del: d2 });
+    if (usarD3) dets.push({ label: "Delito 3", del: d3 });
+
+    bloques.push(`LIQUIDACIÓN DE PENA – UNIFICACIÓN (Rol: ${rol})`);
+    bloques.push(`Tope legal máximo considerado: ${topeLegalAnios} año(s).`);
+    bloques.push("");
+
+    dets.forEach(({ label, del }) => {
+      const res = liquidarDelito(del);
+      bloques.push(`${label}: ${del.nombre || "(sin nombre)"}`);
+      bloques.push(`  Pena impuesta: ${fmtYMD(res.baseDias)}`);
+      bloques.push(
+        `  Abonos: ${fmtYMD(res.abonosDias)} (cautelares + conmutación)`
+      );
+      bloques.push(`  Neto por este delito: ${fmtYMD(res.netoDias)}`);
+      if (del.fechaInicio?.trim()) {
+        bloques.push(`  Fecha de inicio de cómputo: ${del.fechaInicio}`);
+      }
+      bloques.push("");
+    });
+
+    bloques.push(
+      `Suma de penas (antes de tope): ${fmtYMD(unificado.totalBaseDias)}`
+    );
+    bloques.push(`Abonos totales: ${fmtYMD(unificado.totalAbonosDias)}`);
+    if (unificado.topadoDias < unificado.totalBaseDias) {
+      bloques.push(
+        `Tope legal aplicado: ${fmtYMD(unificado.topadoDias)} (se reduce desde la suma)`
+      );
+    } else {
+      bloques.push(`Tope legal aplicado: (no supera el tope)`);
+    }
+    bloques.push(
+      `Pena efectiva tras tope y abonos: ${fmtYMD(unificado.netoTrasTopeDias)}`
+    );
+    bloques.push("");
+
+    bloques.push(
+      `Hitos: 1/2 = ${fmtYMD(unificado.mitadDias)}, 2/3 = ${fmtYMD(
+        unificado.dosTercioDias
+      )} (sobre la pena topada).`
+    );
+
+    if (observaciones.trim()) {
+      bloques.push("");
+      bloques.push(`Observaciones:`);
+      bloques.push(observaciones.trim());
+    }
+
+    return bloques.join("\n");
+  }, [rol, d1, d2, d3, usarD2, usarD3, unificado, topeLegalAnios, observaciones]);
+
+  // Exportaciones
+  async function descargarPDF() {
+    if (!informe.trim()) return;
+    // import dinámico para no romper build si no existe el módulo
+    const dynImport = (p: string) => import(/* @vite-ignore */ (p as any));
+    const pdfPath = ["..", "..", "/lib", "/pdf-generator"].join("");
+    try {
+      const mod: any = await dynImport(pdfPath);
+      const contentStyled = `\fTimes New Roman\n` + informe;
+      const blob = await mod.generatePDF({
+        title: `Liquidación unificada`,
+        content: contentStyled,
+        branding: {},
+      });
+      mod.downloadPDF(blob, `liquidacion-unificada-${Date.now()}.pdf`);
+      return;
+    } catch (e) {
+      console.warn("pdf-generator no disponible, usando DOC", e);
+    }
+    // Fallback DOC
+    const safe = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{white-space:pre-wrap;font-family:Times New Roman}</style></head><body>${safe(
+      informe
+    )}</body></html>`;
+    const blob = new Blob([html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `liquidacion-unificada-${Date.now()}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function descargarTXT() {
+    if (!informe.trim()) return;
+    const blob = new Blob([informe], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `liquidacion-unificada-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Helpers setters
+  const setPena =
+    (which: "d1" | "d2" | "d3") =>
+    (field: keyof PenaImpuesta, val: number) => {
+      const set = which === "d1" ? setD1 : which === "d2" ? setD2 : setD3;
+      const cur = which === "d1" ? d1 : which === "d2" ? d2 : d3;
+      set({
+        ...cur,
+        pena: { ...cur.pena, [field]: Number.isFinite(val) ? Math.max(0, val) : 0 },
+      });
+    };
+
+  const setAbono =
+    (which: "d1" | "d2" | "d3") =>
+    (field: keyof Abonos, val: number) => {
+      const set = which === "d1" ? setD1 : which === "d2" ? setD2 : setD3;
+      const cur = which === "d1" ? d1 : which === "d2" ? d2 : d3;
+      set({
+        ...cur,
+        abonos: {
+          ...cur.abonos,
+          [field]: Number.isFinite(val) ? Math.max(0, val) : 0,
+        },
+      });
+    };
+
+  const setNombre =
+    (which: "d1" | "d2" | "d3") =>
+    (v: string) => {
+      const set = which === "d1" ? setD1 : which === "d2" ? setD2 : setD3;
+      const cur = which === "d1" ? d1 : which === "d2" ? d2 : d3;
+      set({ ...cur, nombre: v });
+    };
+
+  const setFecha =
+    (which: "d1" | "d2" | "d3") =>
+    (v: string) => {
+      const set = which === "d1" ? setD1 : which === "d2" ? setD2 : setD3;
+      const cur = which === "d1" ? d1 : which === "d2" ? d2 : d3;
+      set({ ...cur, fechaInicio: v });
+    };
+
+  // =====================
+  // Test Cases
+  // =====================
+  function runTest(id: string) {
+    if (id === "uno-delito") {
+      setUsarD2(false);
+      setUsarD3(false);
+      setD1({
+        nombre: "Hurto agravado",
+        pena: { anios: 3, meses: 0, dias: 0 },
+        abonos: {
+          detencionPreventivaDias: 90,
+          arrestoDomiciliarioDias: 0,
+          otrasMedidasDias: 0,
+          trabajoDias: 30,
+          estudioDias: 0,
+          conductaDias: 0,
+        },
+        fechaInicio: "",
+      });
+      setTopeLegalAnios(50);
+    } else if (id === "dos-delitos") {
+      setUsarD2(true);
+      setUsarD3(false);
+      setD1({
+        nombre: "Robo agravado",
+        pena: { anios: 6, meses: 0, dias: 0 },
+        abonos: {
+          detencionPreventivaDias: 120,
+          arrestoDomiciliarioDias: 0,
+          otrasMedidasDias: 0,
+          trabajoDias: 60,
+          estudioDias: 0,
+          conductaDias: 0,
+        },
+        fechaInicio: "",
+      });
+      setD2({
+        nombre: "Lesiones personales",
+        pena: { anios: 2, meses: 6, dias: 0 },
+        abonos: {
+          detencionPreventivaDias: 0,
+          arrestoDomiciliarioDias: 30,
+          otrasMedidasDias: 0,
+          trabajoDias: 0,
+          estudioDias: 30,
+          conductaDias: 0,
+        },
+        fechaInicio: "",
+      });
+      setTopeLegalAnios(50);
+    } else if (id === "tres-delitos-tope") {
+      setUsarD2(true);
+      setUsarD3(true);
+      setD1({
+        nombre: "Homicidio doloso",
+        pena: { anios: 25, meses: 0, dias: 0 },
+        abonos: {
+          detencionPreventivaDias: 300,
+          arrestoDomiciliarioDias: 0,
+          otrasMedidasDias: 0,
+          trabajoDias: 0,
+          estudioDias: 0,
+          conductaDias: 0,
+        },
+        fechaInicio: "",
+      });
+      setD2({
+        nombre: "Robo agravado",
+        pena: { anios: 10, meses: 0, dias: 0 },
+        abonos: {
+          detencionPreventivaDias: 100,
+          arrestoDomiciliarioDias: 0,
+          otrasMedidasDias: 0,
+          trabajoDias: 0,
+          estudioDias: 0,
+          conductaDias: 0,
+        },
+        fechaInicio: "",
+      });
+      setD3({
+        nombre: "Estafa",
+        pena: { anios: 8, meses: 0, dias: 0 },
+        abonos: {
+          detencionPreventivaDias: 60,
+          arrestoDomiciliarioDias: 0,
+          otrasMedidasDias: 0,
+          trabajoDias: 0,
+          estudioDias: 0,
+          conductaDias: 0,
+        },
+        fechaInicio: "",
+      });
+      // Forzamos demostración de tope (por ejemplo 35 años)
+      setTopeLegalAnios(35);
+    }
+  }
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-border-gray bg-surface-dark/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-gold hover:text-gold/80">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-semibold">Volver</span>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+      <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur sticky top-0 z-20">
+        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center text-slate-300 hover:text-white transition text-sm"
+          >
+            ← Inicio
           </Link>
-          <h1 className="text-xl font-poppins font-bold text-foreground">
-            FlowPenal <span className="text-gold">by Lex Vence</span>
-          </h1>
+          <div className="ml-auto flex items-center gap-2">
+            <Btn variant="outline" onClick={() => runTest("uno-delito")}>
+              Test 1 Delito
+            </Btn>
+            <Btn variant="outline" onClick={() => runTest("dos-delitos")}>
+              Test 2 Delitos (unificado)
+            </Btn>
+            <Btn variant="outline" onClick={() => runTest("tres-delitos-tope")}>
+              Test 3 Delitos + Tope
+            </Btn>
+          </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center">
-              <Scale className="w-6 h-6 text-gold" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-poppins font-bold text-foreground">
-              Liquidación de Pena
-            </h1>
-          </div>
-          <p className="text-muted-foreground text-lg">
-            Calcule ½ y ⅔ de pena con abonos de medidas cautelares según CPP Art. 232.
-          </p>
-        </div>
-
-        <Card className="border-border-gray bg-card shadow-soft mb-6">
-          <CardHeader>
-            <CardTitle className="text-2xl font-poppins">Pena Impuesta</CardTitle>
-            <CardDescription>Ingrese la pena total a cumplir</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="anos" className="text-base">Años</Label>
-                <Input
-                  id="anos"
-                  type="number"
-                  placeholder="0"
-                  value={penaAnos}
-                  onChange={(e) => setPenaAnos(e.target.value)}
-                  className="bg-background border-border-gray text-base"
+      <div className="mx-auto max-w-6xl px-4 py-6 space-y-6">
+        {/* Configuración general */}
+        <Box>
+          <Head
+            title="Liquidación de Penas – Unificación"
+            description="Agregue hasta tres delitos para unificar. Ajuste abonos (CPP 232) y conmutación (CP 99-104)."
+          />
+          <Section className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <Label>Rol</Label>
+                <Select
+                  value={rol}
+                  onChange={(v: Rol) => setRol(v)}
+                  options={["Defensa", "Fiscalía", "Juez"]}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="meses" className="text-base">Meses</Label>
+              <div>
+                <Label>Tope legal máximo (años)</Label>
                 <Input
-                  id="meses"
                   type="number"
-                  placeholder="0"
-                  value={penaMeses}
-                  onChange={(e) => setPenaMeses(e.target.value)}
-                  className="bg-background border-border-gray text-base"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dias" className="text-base">Días</Label>
-                <Input
-                  id="dias"
-                  type="number"
-                  placeholder="0"
-                  value={penaDias}
-                  onChange={(e) => setPenaDias(e.target.value)}
-                  className="bg-background border-border-gray text-base"
+                  min={1}
+                  value={topeLegalAnios}
+                  onChange={(e: any) =>
+                    setTopeLegalAnios(Math.max(1, Number(e.target.value || 1)))
+                  }
                 />
               </div>
             </div>
+          </Section>
+        </Box>
 
-            <div className="space-y-2">
-              <Label htmlFor="inicio" className="text-base">Fecha de Inicio de Cumplimiento</Label>
-              <Input
-                id="inicio"
-                type="date"
-                value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
-                className="bg-background border-border-gray text-base"
+        {/* Delito 1 (obligatorio) */}
+        <DelitoCard
+          titulo="Delito 1 (obligatorio)"
+          d={d1}
+          onNombre={setNombre("d1")}
+          onPena={setPena("d1")}
+          onAbono={setAbono("d1")}
+          onFecha={setFecha("d1")}
+        />
+
+        {/* Delito 2 (opcional) */}
+        <Box>
+          <Head title="Delito 2 (opcional)" />
+          <Section className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Label>¿Agregar segundo delito?</Label>
+              <Select
+                value={usarD2 ? "SI" : "NO"}
+                onChange={(v) => setUsarD2(v === "SI")}
+                options={["NO", "SI"]}
               />
             </div>
-
-          </CardContent>
-        </Card>
-
-        <Card className="border-border-gray bg-card shadow-soft mb-6">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-poppins">Medidas Cautelares a Abonar</CardTitle>
-                <CardDescription>Según CPP Art. 232 (equivalencias)</CardDescription>
-              </div>
-              <Button onClick={agregarMedida} className="bg-blue-lex hover:bg-blue-lex/90">
-                <Plus className="w-4 h-4 mr-2" />
-                Agregar
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-
-            {medidas.length === 0 && (
-              <p className="text-muted-foreground text-center py-8">
-                No hay medidas cautelares agregadas. Haga clic en "Agregar" para incluir medidas.
-              </p>
+            {usarD2 && (
+              <DelitoFields
+                d={d2}
+                onNombre={setNombre("d2")}
+                onPena={setPena("d2")}
+                onAbono={setAbono("d2")}
+                onFecha={setFecha("d2")}
+              />
             )}
+          </Section>
+        </Box>
 
-            {medidas.map((medida, index) => (
-              <div key={index} className="bg-background/50 p-4 rounded-lg border border-border-gray space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-foreground">Medida {index + 1}</h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => eliminarMedida(index)}
-                    className="text-accent-legal hover:text-accent-legal/80"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="text-sm">Tipo de Medida</Label>
-                    <Select
-                      value={medida.tipo}
-                      onValueChange={(v) => actualizarMedida(index, "tipo", v)}
-                    >
-                      <SelectTrigger className="bg-background border-border-gray">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="detencion_preventiva">Detención Preventiva (1:1)</SelectItem>
-                        <SelectItem value="arresto_domiciliario">Arresto Domiciliario (1:1)</SelectItem>
-                        <SelectItem value="prohibicion_salida">Prohibición de Salida (1:5)</SelectItem>
-                        <SelectItem value="presentacion_periodica">Presentación Periódica</SelectItem>
-                        <SelectItem value="permanencia_domicilio">Permanencia en Domicilio (1:2)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {medida.tipo !== "presentacion_periodica" ? (
-                    <>
-                      <div className="space-y-2">
-                        <Label className="text-sm">Desde</Label>
-                        <Input
-                          type="date"
-                          value={medida.desde}
-                          onChange={(e) => actualizarMedida(index, "desde", e.target.value)}
-                          className="bg-background border-border-gray"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm">Hasta</Label>
-                        <Input
-                          type="date"
-                          value={medida.hasta}
-                          onChange={(e) => actualizarMedida(index, "hasta", e.target.value)}
-                          className="bg-background border-border-gray"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="space-y-2">
-                      <Label className="text-sm">Número de Presentaciones</Label>
-                      <Input
-                        type="number"
-                        value={medida.presentaciones}
-                        onChange={(e) => actualizarMedida(index, "presentaciones", parseInt(e.target.value))}
-                        className="bg-background border-border-gray"
-                        placeholder="0"
-                      />
-                      <p className="text-xs text-muted-foreground">1 día de pena por cada 5 presentaciones</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-          </CardContent>
-        </Card>
-
-        <Card className="border-border-gray bg-card shadow-soft mb-6">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-poppins">Conmutación y Redención de Pena</CardTitle>
-                <CardDescription>Según CP Art. 99-104 (trabajo, estudio, conducta)</CardDescription>
-              </div>
-              <Button onClick={agregarConmutacion} className="bg-blue-lex hover:bg-blue-lex/90">
-                <Plus className="w-4 h-4 mr-2" />
-                Agregar
-              </Button>
+        {/* Delito 3 (opcional) */}
+        <Box>
+          <Head title="Delito 3 (opcional)" />
+          <Section className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Label>¿Agregar tercer delito?</Label>
+              <Select
+                value={usarD3 ? "SI" : "NO"}
+                onChange={(v) => setUsarD3(v === "SI")}
+                options={["NO", "SI"]}
+              />
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-
-            {conmutaciones.length === 0 && (
-              <p className="text-muted-foreground text-center py-8">
-                No hay conmutaciones agregadas. Haga clic en "Agregar" para incluir días de trabajo, estudio o conducta.
-              </p>
+            {usarD3 && (
+              <DelitoFields
+                d={d3}
+                onNombre={setNombre("d3")}
+                onPena={setPena("d3")}
+                onAbono={setAbono("d3")}
+                onFecha={setFecha("d3")}
+              />
             )}
+          </Section>
+        </Box>
 
-            {conmutaciones.map((conm, index) => (
-              <div key={index} className="bg-background/50 p-4 rounded-lg border border-border-gray space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-foreground">Conmutación {index + 1}</h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => eliminarConmutacion(index)}
-                    className="text-accent-legal hover:text-accent-legal/80"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+        {/* Observaciones */}
+        <Box>
+          <Head title="Observaciones (opcional)" />
+          <Section>
+            <Textarea
+              className="min-h-[100px]"
+              value={observaciones}
+              onChange={(e: any) => setObservaciones(e.target.value)}
+            />
+          </Section>
+        </Box>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label className="text-sm">Tipo de Actividad</Label>
-                    <Select
-                      value={conm.tipo}
-                      onValueChange={(v) => actualizarConmutacion(index, "tipo", v)}
-                    >
-                      <SelectTrigger className="bg-background border-border-gray">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="trabajo">Trabajo (2:1)</SelectItem>
-                        <SelectItem value="estudio">Estudio (2:1)</SelectItem>
-                        <SelectItem value="instruccion">Instrucción (3:1)</SelectItem>
-                        <SelectItem value="tratamiento">Tratamiento (3:1)</SelectItem>
-                        <SelectItem value="conducta">Conducta Ejemplar</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-sm">Días Acumulados</Label>
-                    <Input
-                      type="number"
-                      value={conm.dias}
-                      onChange={(e) => actualizarConmutacion(index, "dias", parseInt(e.target.value))}
-                      className="bg-background border-border-gray"
-                      placeholder="0"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {conm.tipo === "trabajo" || conm.tipo === "estudio" ? "2 días actividad = 1 día pena" :
-                       conm.tipo === "instruccion" || conm.tipo === "tratamiento" ? "3 días actividad = 1 día pena" :
-                       "Variable según auto judicial"}
-                    </p>
-                  </div>
-                </div>
+        {/* Resumen y Exportación */}
+        <Box>
+          <Head title="Resumen unificado y exportación" />
+          <Section className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="text-sm p-3 bg-slate-900/40 border border-white/10 rounded-xl">
+                <div className="font-semibold mb-2">Totales</div>
+                <div>Suma de penas (antes de tope): {fmtYMD(unificado.totalBaseDias)}</div>
+                <div>Abonos totales: {fmtYMD(unificado.totalAbonosDias)}</div>
+                <div>Tope legal aplicado: {fmtYMD(unificado.topadoDias)}</div>
+                <div>Pena efectiva tras tope y abonos: {fmtYMD(unificado.netoTrasTopeDias)}</div>
+                <div className="mt-2">Hitos: 1/2 = {fmtYMD(unificado.mitadDias)} | 2/3 = {fmtYMD(unificado.dosTercioDias)}</div>
               </div>
-            ))}
-
-          </CardContent>
-        </Card>
-
-        <Button
-          onClick={calcular}
-          className="w-full bg-gold hover:bg-gold/90 text-bg-gradient-start font-semibold text-lg py-6 shadow-glow"
-        >
-          <Scale className="w-5 h-5 mr-2" />
-          Calcular Liquidación
-        </Button>
-
-        {/* Resultado */}
-        {resultado && (
-          <Card className="border-gold bg-card shadow-glow mt-6">
-            <CardHeader>
-              <CardTitle className="text-2xl font-poppins text-gold">Resultado de Liquidación</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-background/50 p-4 rounded-lg border border-border-gray">
-                  <p className="text-sm text-muted-foreground mb-1">Pena Total</p>
-                  <p className="text-2xl font-bold text-foreground">{resultado.totalDias} días</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {Math.floor(resultado.totalDias / 365)} años {Math.floor((resultado.totalDias % 365) / 30)} meses
-                  </p>
-                </div>
-
-                <div className="bg-blue-lex/10 p-4 rounded-lg border border-blue-lex">
-                  <p className="text-sm text-blue-lex mb-1">Abonos (CPP 232)</p>
-                  <p className="text-2xl font-bold text-blue-lex">{resultado.abonosMedidas} días</p>
-                  <p className="text-sm text-blue-lex/80 mt-1">Medidas cautelares</p>
-                </div>
-
-                <div className="bg-gold/10 p-4 rounded-lg border border-gold">
-                  <p className="text-sm text-gold mb-1">Saldo Efectivo</p>
-                  <p className="text-2xl font-bold text-gold">{resultado.saldoEfectivo} días</p>
-                  <p className="text-sm text-gold/80 mt-1">
-                    {Math.floor(resultado.saldoEfectivo / 365)} años {Math.floor((resultado.saldoEfectivo % 365) / 30)} meses
-                  </p>
-                </div>
+              <div className="text-sm p-3 bg-slate-900/40 border border-white/10 rounded-xl">
+                <div className="font-semibold mb-2">Criterios</div>
+                <div>Convención de cómputo: 1 mes = 30 días; 1 año = 12 meses.</div>
+                <div>Conmutaciones (trabajo/estudio/conducta) ingresadas como días líquidos de abono.</div>
+                <div>Tope legal configurable para concursar penas (editable).</div>
               </div>
+            </div>
 
-              <div className="bg-background/50 p-6 rounded-lg border border-border-gray space-y-4">
-                <h3 className="font-poppins font-semibold text-xl text-foreground mb-4">
-                  Fechas Clave para Subrogados
-                </h3>
+            <div className="text-sm p-3 bg-slate-900/40 border border-white/10 rounded-xl">
+              <pre className="whitespace-pre-wrap leading-relaxed">{informe}</pre>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gold/5 p-4 rounded-lg border border-gold/30">
-                    <p className="text-sm text-gold font-semibold mb-2">½ Pena (Libertad Condicional)</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      {new Date(resultado.fechas.mediaPena).toLocaleDateString('es-PA', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-
-                  <div className="bg-blue-lex/5 p-4 rounded-lg border border-blue-lex/30">
-                    <p className="text-sm text-blue-lex font-semibold mb-2">⅔ Pena</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      {new Date(resultado.fechas.dosTercios).toLocaleDateString('es-PA', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-accent-legal/5 p-4 rounded-lg border border-accent-legal/30 mt-4">
-                  <p className="text-sm text-muted-foreground mb-2">Cumplimiento Total</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {new Date(resultado.fechas.cumplimiento).toLocaleDateString('es-PA', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-background/50 p-4 rounded-lg border border-border-gray">
-                <h3 className="font-poppins font-semibold text-lg text-foreground mb-3">
-                  Fundamento Legal
-                </h3>
-                <ul className="space-y-2">
-                  {resultado.fundamento.map((fund: string, i: number) => (
-                    <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
-                      <span className="text-gold mt-1">•</span>
-                      <span>{fund}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <Button
-                variant="outline"
-                className="w-full border-gold text-gold hover:bg-gold hover:text-bg-gradient-start"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Descargar PDF
-              </Button>
-
-            </CardContent>
-          </Card>
-        )}
+            <div className="flex gap-2">
+              <Btn onClick={descargarPDF}>Descargar PDF (con fallback)</Btn>
+              <Btn variant="secondary" onClick={descargarTXT}>
+                Descargar TXT
+              </Btn>
+            </div>
+          </Section>
+        </Box>
       </div>
     </div>
   );
 }
+
+// =====================
+// Subcomponentes
+// =====================
+function DelitoCard({
+  titulo,
+  d,
+  onNombre,
+  onPena,
+  onAbono,
+  onFecha,
+}: {
+  titulo: string;
+  d: DelitoEntrada;
+  onNombre: (v: string) => void;
+  onPena: (f: keyof PenaImpuesta, v: number) => void;
+  onAbono: (f: keyof Abonos, v: number) => void;
+  onFecha: (v: string) => void;
+}) {
+  return (
+    <Box>
+      <Head title={titulo} />
+      <Section className="space-y-4">
+        <DelitoFields d={d} onNombre={onNombre} onPena={onPena} onAbono={onAbono} onFecha={onFecha} />
+      </Section>
+    </Box>
+  );
+}
+
+function DelitoFields({
+  d,
+  onNombre,
+  onPena,
+  onAbono,
+  onFecha,
+}: {
+  d: DelitoEntrada;
+  onNombre: (v: string) => void;
+  onPena: (f: keyof PenaImpuesta, v: number) => void;
+  onAbono: (f: keyof Abonos, v: number) => void;
+  onFecha: (v: string) => void;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <Label>Delito</Label>
+          <Input value={d.nombre} onChange={(e: any) => onNombre(e.target.value)} />
+        </div>
+        <div>
+          <Label>Pena – Años</Label>
+          <Input type="number" min={0} value={d.pena.anios} onChange={(e: any) => onPena("anios", Number(e.target.value || 0))} />
+        </div>
+        <div>
+          <Label>Pena – Meses</Label>
+          <Input type="number" min={0} value={d.pena.meses} onChange={(e: any) => onPena("meses", Number(e.target.value || 0))} />
+        </div>
+        <div>
+          <Label>Pena – Días</Label>
+          <Input type="number" min={0} value={d.pena.dias} onChange={(e: any) => onPena("dias", Number(e.target.value || 0))} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <Label>Abono – Detención preventiva (días)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={d.abonos.detencionPreventivaDias}
+            onChange={(e: any) => onAbono("detencionPreventivaDias", Number(e.target.value || 0))}
+          />
+        </div>
+        <div>
+          <Label>Abono – Arresto domiciliario (días)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={d.abonos.arrestoDomiciliarioDias}
+            onChange={(e: any) => onAbono("arrestoDomiciliarioDias", Number(e.target.value || 0))}
+          />
+        </div>
+        <div>
+          <Label>Abono – Otras medidas (días)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={d.abonos.otrasMedidasDias}
+            onChange={(e: any) => onAbono("otrasMedidasDias", Number(e.target.value || 0))}
+          />
+        </div>
+        <div>
+          <Label>Inicio de cómputo (opcional)</Label>
+          <Input value={d.fechaInicio || ""} onChange={(e: any) => onFecha(e.target.value)} placeholder="dd/mm/aaaa" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <Label>Conmutación – Trabajo (días)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={d.abonos.trabajoDias}
+            onChange={(e: any) => onAbono("trabajoDias", Number(e.target.value || 0))}
+          />
+        </div>
+        <div>
+          <Label>Conmutación – Estudio (días)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={d.abonos.estudioDias}
+            onChange={(e: any) => onAbono("estudioDias", Number(e.target.value || 0))}
+          />
+        </div>
+        <div>
+          <Label>Conmutación – Conducta (días)</Label>
+          <Input
+            type="number"
+            min={0}
+            value={d.abonos.conductaDias}
+            onChange={(e: any) => onAbono("conductaDias", Number(e.target.value || 0))}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
