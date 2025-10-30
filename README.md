@@ -1,4 +1,4 @@
-# FlowPenal by Lex Vence 🏛️
+# FlowPenal by Lex Vence 
 
 **Herramienta Jurídica Profesional para Abogados en Panamá**
 
@@ -209,5 +209,3 @@ Sistema Penal Acusatorio
 Para asistencia técnica o consultas sobre la herramienta, contactar a support@lexvence.com
 
 ---
-
-**Generado con Same.new** | Herramienta Jurídica Profesional
