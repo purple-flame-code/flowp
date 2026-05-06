@@ -41,11 +41,13 @@ type FormState = {
   sociedadFolio: string;
   representanteCargo: string;
 
+  numeroCarpetilla: string;
   autoridadDestino: string;
-  asunto: string;
+  descripcionInvestigacion: string;
   tipoProceso: string;
   contraparte: string;
   delitoOMateria: string;
+  perjudicado: string;
   finalidadPoder: string;
 
   ciudad: string;
@@ -96,12 +98,14 @@ const initialForm: FormState = {
   sociedadFolio: "",
   representanteCargo: "Presidente y Representante Legal",
 
+  numeroCarpetilla: "",
   autoridadDestino:
     "SEÑOR(A) FISCAL DE ATENCIÓN PRIMARIA DE LA FISCALÍA METROPOLITANA:",
-  asunto: "",
-  tipoProceso: "proceso penal",
+  descripcionInvestigacion: "",
+  tipoProceso: "Investigación seguida",
   contraparte: "",
   delitoOMateria: "",
+  perjudicado: "",
   finalidadPoder:
     "que asuman mi representación dentro del proceso indicado, presenten las solicitudes que correspondan y ejerzan las acciones legales necesarias para la defensa de mis derechos e intereses",
 
@@ -225,9 +229,26 @@ function nombreMayuscula(nombre: string) {
   return nombre.trim().toUpperCase();
 }
 
+function construirDescripcionInvestigacion(form: FormState) {
+  if (form.descripcionInvestigacion.trim()) {
+    return form.descripcionInvestigacion.trim();
+  }
+
+  const contraparte = form.contraparte.trim() || "__________";
+  const delito = form.delitoOMateria.trim() || "__________";
+  const perjudicado =
+    form.perjudicado.trim() ||
+    form.clienteNombre.trim() ||
+    form.sociedadNombre.trim() ||
+    "__________";
+
+  return `${form.tipoProceso || "Investigación seguida"} a ${contraparte} por la comisión de un delito contra ${delito} en perjuicio de ${perjudicado}.`;
+}
+
 function construirComparecencia(form: FormState) {
   const generoCliente = form.clienteGenero === "mujer" ? "mujer" : "varón";
   const generoAbogado = form.abogadoGenero === "mujer" ? "mujer" : "varón";
+  const descripcion = construirDescripcionInvestigacion(form);
 
   if (form.tipoPoderdante === "persona_juridica") {
     return `Quien suscribe, ${
@@ -269,9 +290,7 @@ function construirComparecencia(form: FormState) {
     }, ${
       form.abogadoRecibeNotificaciones ||
       "lugar donde recibe notificaciones personales"
-    }, con el fin de ${
-      form.finalidadPoder || "[FINALIDAD DEL PODER]"
-    }.`;
+    }, con el fin de que asuman mi representación dentro de ${descripcion}`;
   }
 
   return `Quien suscribe, ${
@@ -286,7 +305,7 @@ function construirComparecencia(form: FormState) {
     form.clienteTelefono || "[TELÉFONO]"
   } y correo electrónico ${
     form.clienteCorreos || "[CORREO ELECTRÓNICO]"
-  }, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial, amplio y suficiente, a la firma ${
+  }, comparezco respetuosamente ante su despacho con el propósito de otorgar Poder Especial amplio y suficiente a la firma ${
     form.nombreFirma || "[NOMBRE DE LA FIRMA]"
   }, representada en este acto por la Lcda. ${
     form.abogadoNombre || "[NOMBRE DEL ABOGADO]"
@@ -305,7 +324,7 @@ function construirComparecencia(form: FormState) {
   }, ${
     form.abogadoRecibeNotificaciones ||
     "lugar donde recibe notificaciones personales"
-  }, con el fin de ${form.finalidadPoder || "[FINALIDAD DEL PODER]"}.`;
+  }, con el propósito de ${form.finalidadPoder || `que asuman mi representación dentro de ${descripcion}`}.`;
 }
 
 function construirFacultades(form: FormState) {
@@ -340,38 +359,8 @@ function construirFacultades(form: FormState) {
   return `${textoBase}\n\nAsimismo, queda facultada para ${form.facultadesAdicionales.trim()}.`;
 }
 
-function construirAsunto(form: FormState) {
-  if (form.asunto.trim()) {
-    return form.asunto.trim();
-  }
-
-  const partes = [];
-
-  if (form.tipoProceso.trim()) {
-    partes.push(form.tipoProceso.trim());
-  }
-
-  if (form.contraparte.trim()) {
-    partes.push(`en contra de ${form.contraparte.trim()}`);
-  }
-
-  if (form.delitoOMateria.trim()) {
-    partes.push(`por ${form.delitoOMateria.trim()}`);
-  }
-
-  if (form.tipoPoderdante === "persona_juridica" && form.sociedadNombre.trim()) {
-    partes.push(`en representación de ${form.sociedadNombre.trim()}`);
-  } else if (form.clienteNombre.trim()) {
-    partes.push(`en representación de ${form.clienteNombre.trim()}`);
-  }
-
-  return partes.length
-    ? partes.join(" ")
-    : "[DESCRIPCIÓN BREVE DEL PROCESO O ACTUACIÓN]";
-}
-
 function construirDocumentoHtml(form: FormState) {
-  const asunto = construirAsunto(form);
+  const descripcionInvestigacion = construirDescripcionInvestigacion(form);
   const comparecencia = construirComparecencia(form);
   const facultades = construirFacultades(form);
   const fecha = form.usarFechaPresentacion
@@ -418,10 +407,22 @@ function construirDocumentoHtml(form: FormState) {
         </div>
       </header>
 
+      <section class="datos-superiores">
+        <div class="carpetilla">
+          ${
+            form.numeroCarpetilla.trim()
+              ? `Carpetilla #${escapeHtml(form.numeroCarpetilla)}`
+              : "&nbsp;"
+          }
+        </div>
+
+        <div class="descripcion-investigacion">
+          ${paragraph(descripcionInvestigacion)}
+        </div>
+      </section>
+
       <main>
         <h1>Poder Especial</h1>
-
-        <p class="asunto">${paragraph(asunto)}</p>
 
         <p class="autoridad">${paragraph(form.autoridadDestino)}</p>
 
@@ -491,20 +492,20 @@ function construirDocumentoCompleto(form: FormState) {
           }
 
           .letterhead {
-            margin-bottom: 34px;
+            margin-bottom: 26px;
             font-size: 9pt;
             line-height: 1.25;
           }
 
           .logo-center {
             text-align: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
           }
 
           .logo-firma {
             display: inline-block;
             max-width: 390px;
-            max-height: 115px;
+            max-height: 110px;
             object-fit: contain;
           }
 
@@ -532,11 +533,33 @@ function construirDocumentoCompleto(form: FormState) {
             text-align: right;
           }
 
+          .datos-superiores {
+            display: grid;
+            grid-template-columns: 0.85fr 1.15fr;
+            gap: 28px;
+            align-items: start;
+            margin-bottom: 24px;
+            font-size: 11pt;
+          }
+
+          .carpetilla {
+            text-align: left;
+            font-weight: normal;
+          }
+
+          .descripcion-investigacion {
+            text-align: right;
+            font-weight: bold;
+            line-height: 1.35;
+          }
+
           h1 {
             text-align: center;
             font-size: 16pt;
-            margin: 0 0 18px 0;
-            text-decoration: underline;
+            font-style: italic;
+            font-weight: normal;
+            margin: 0 0 24px 0;
+            text-decoration: none;
           }
 
           p {
@@ -544,16 +567,11 @@ function construirDocumentoCompleto(form: FormState) {
             text-align: justify;
           }
 
-          .asunto {
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 22px;
-          }
-
           .autoridad {
             font-weight: bold;
             text-transform: uppercase;
-            margin-top: 16px;
+            margin-top: 8px;
+            margin-bottom: 16px;
           }
 
           .firmas {
@@ -1034,39 +1052,41 @@ export default function EscritosPage() {
           )}
 
           <Card
-            title="6. Proceso / destino"
-            description="Información del despacho, proceso y finalidad concreta del poder."
+            title="6. Carpetilla e investigación"
+            description="Esta información aparece debajo del membrete: carpetilla a la izquierda y descripción del proceso a la derecha."
           >
             <div>
-              <FieldLabel>Autoridad o despacho destinatario</FieldLabel>
-              <TextArea
-                value={form.autoridadDestino}
-                onChange={(value) => update("autoridadDestino", value)}
-                rows={3}
+              <FieldLabel>Número de carpetilla</FieldLabel>
+              <TextInput
+                value={form.numeroCarpetilla}
+                onChange={(value) => update("numeroCarpetilla", value)}
+                placeholder="Ejemplo: 201900065074"
               />
             </div>
 
             <div>
-              <FieldLabel>Asunto completo del poder</FieldLabel>
+              <FieldLabel>Descripción completa de la investigación</FieldLabel>
               <TextArea
-                value={form.asunto}
-                onChange={(value) => update("asunto", value)}
-                rows={4}
-                placeholder="Ejemplo: Querella en contra de... por delito... en perjuicio de..."
+                value={form.descripcionInvestigacion}
+                onChange={(value) =>
+                  update("descripcionInvestigacion", value)
+                }
+                rows={5}
+                placeholder="Ejemplo: Investigación seguida a ______ por la comisión de un delito contra ______ en perjuicio de ______."
               />
             </div>
 
             <div>
-              <FieldLabel>Tipo de proceso</FieldLabel>
+              <FieldLabel>Tipo de proceso / investigación</FieldLabel>
               <TextInput
                 value={form.tipoProceso}
                 onChange={(value) => update("tipoProceso", value)}
-                placeholder="Proceso penal, demanda de nulidad, querella, etc."
+                placeholder="Investigación seguida"
               />
             </div>
 
             <div>
-              <FieldLabel>Contraparte / persona contra quien se dirige</FieldLabel>
+              <FieldLabel>Persona investigada / contraparte</FieldLabel>
               <TextInput
                 value={form.contraparte}
                 onChange={(value) => update("contraparte", value)}
@@ -1074,10 +1094,33 @@ export default function EscritosPage() {
             </div>
 
             <div>
-              <FieldLabel>Delito, materia o actuación</FieldLabel>
+              <FieldLabel>Delito o materia</FieldLabel>
               <TextArea
                 value={form.delitoOMateria}
                 onChange={(value) => update("delitoOMateria", value)}
+                rows={3}
+                placeholder="Ejemplo: la fe pública, el patrimonio económico, el honor de la persona natural..."
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Persona en perjuicio de quien se investiga</FieldLabel>
+              <TextInput
+                value={form.perjudicado}
+                onChange={(value) => update("perjudicado", value)}
+              />
+            </div>
+          </Card>
+
+          <Card
+            title="7. Autoridad y finalidad"
+            description="Despacho destinatario y finalidad concreta del poder."
+          >
+            <div>
+              <FieldLabel>Autoridad o despacho destinatario</FieldLabel>
+              <TextArea
+                value={form.autoridadDestino}
+                onChange={(value) => update("autoridadDestino", value)}
                 rows={3}
               />
             </div>
@@ -1093,7 +1136,7 @@ export default function EscritosPage() {
           </Card>
 
           <Card
-            title="7. Facultades y fecha"
+            title="8. Facultades y fecha"
             description="Bloque preconstituido de facultades generales."
           >
             <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-slate-900/50 p-3 text-sm text-slate-300">
