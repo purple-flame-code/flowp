@@ -294,7 +294,10 @@ function construirComparecencia(form: FormState) {
     }, ${
       form.abogadoRecibeNotificaciones ||
       "lugar donde recibe notificaciones personales"
-    }, con el propósito de ${form.finalidadPoder || `que asuman mi representación dentro de ${descripcion}`}.`;
+    }, con el propósito de ${
+      form.finalidadPoder ||
+      `que asuman mi representación dentro de ${descripcion}`
+    }.`;
   }
 
   return `Quien suscribe, ${
@@ -328,7 +331,10 @@ function construirComparecencia(form: FormState) {
   }, ${
     form.abogadoRecibeNotificaciones ||
     "lugar donde recibe notificaciones personales"
-  }, con el propósito de ${form.finalidadPoder || `que asuman mi representación dentro de ${descripcion}`}.`;
+  }, con el propósito de ${
+    form.finalidadPoder ||
+    `que asuman mi representación dentro de ${descripcion}`
+  }.`;
 }
 
 function construirFacultades(form: FormState) {
@@ -373,7 +379,9 @@ function construirHeaderFallback(form: FormState) {
       </tr>
       <tr>
         <td class="fallback-header-left">
-          <div><strong>TELÉFONOS:</strong> ${escapeHtml(form.telefonosFirma)}</div>
+          <div><strong>TELÉFONOS:</strong> ${escapeHtml(
+            form.telefonosFirma
+          )}</div>
           <div><strong>FAX:</strong> ${escapeHtml(form.faxFirma)}</div>
           <div>${escapeHtml(form.webFirma)}</div>
           <div>${escapeHtml(form.correoFirma)}</div>
@@ -427,17 +435,19 @@ function construirDocumentoHtml(form: FormState) {
     <div class="WordSection1 documento">
       ${headerCompuesto}
 
-      <table class="meta-table" role="presentation">
+      <table class="tabla-proceso" role="presentation">
         <tr>
-          <td class="meta-left">
+          <td class="celda-carpetilla">
             ${
               form.numeroCarpetilla.trim()
                 ? `Carpetilla #${escapeHtml(form.numeroCarpetilla)}`
                 : "&nbsp;"
             }
           </td>
-          <td class="meta-right">
-            ${paragraph(descripcionInvestigacion)}
+          <td class="celda-descripcion">
+            <div class="descripcion-proceso">
+              ${paragraph(descripcionInvestigacion)}
+            </div>
           </td>
         </tr>
       </table>
@@ -577,24 +587,37 @@ function estilosDocumento() {
       text-transform: uppercase;
     }
 
-    .meta-table {
-      margin-bottom: 8pt;
+    .tabla-proceso {
+      width: 100%;
+      table-layout: fixed;
+      margin-top: 0;
+      margin-bottom: 10pt;
       font-size: 10.5pt;
       line-height: 1.12;
+      border-collapse: collapse;
     }
 
-    .meta-left {
-      width: 42%;
+    .celda-carpetilla {
+      width: 50%;
       text-align: left;
+      vertical-align: top;
+      padding: 0;
       font-weight: normal;
-      padding-right: 8pt;
     }
 
-    .meta-right {
-      width: 58%;
+    .celda-descripcion {
+      width: 50%;
+      text-align: center;
+      vertical-align: top;
+      padding: 0;
+      font-weight: bold;
+    }
+
+    .descripcion-proceso {
+      width: 100%;
       text-align: center;
       font-weight: bold;
-      padding-left: 18pt;
+      margin: 0 auto;
     }
 
     h1 {
@@ -811,7 +834,7 @@ export default function EscritosPage() {
 
           <Card
             title="2. Branding de la firma"
-            description="Puede subir una sola imagen horizontal ya compuesta con logo + información completa centrada para usarla como header del documento."
+            description="Puede subir una imagen horizontal compuesta con logo + datos de la firma para usarla como header."
           >
             <div>
               <FieldLabel>Imagen compuesta del header</FieldLabel>
@@ -826,16 +849,6 @@ export default function EscritosPage() {
                 }
                 className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
               />
-
-              {form.headerMembreteDataUrl && (
-                <div className="mt-3 rounded-xl bg-white p-3">
-                  <img
-                    src={form.headerMembreteDataUrl}
-                    alt="Header compuesto"
-                    className="mx-auto max-h-32 object-contain"
-                  />
-                </div>
-              )}
             </div>
 
             <div>
@@ -1125,7 +1138,7 @@ export default function EscritosPage() {
 
           <Card
             title="6. Carpetilla e investigación"
-            description="Carpetilla a la izquierda y descripción del proceso a la derecha."
+            description="Esta sección se imprime como tabla: izquierda carpetilla, derecha descripción."
           >
             <div>
               <FieldLabel>Número de carpetilla</FieldLabel>
