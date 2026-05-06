@@ -1,1228 +1,1102 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 
-// ===========================================
-//  Escritos + Aura Penal – Wizard con Branding + Doctrina (tooltips + modal)
-//  Self-contained UI (sin dependencias externas de UI)
-//  **Actualización:** Catálogo completo de delitos (Libro Segundo) por Título → Capítulo → Delito
-// ===========================================
+type TipoPoderdante = "persona_natural" | "persona_juridica";
 
-type Rol = "Fiscalía" | "Defensa" | "Querella"; // Eliminado Órgano Judicial
+type FormState = {
+  // Branding firma
+  nombreFirma: string;
+  sloganFirma: string;
+  telefonosFirma: string;
+  faxFirma: string;
+  webFirma: string;
+  correoFirma: string;
+  direccionFirma: string;
+  logoDataUrl: string;
+  firmaManuscritaDataUrl: string;
 
-type Entidad = "Ministerio Público" | "Defensa Pública" | "Despacho Privado";
+  // Abogado / firma receptora del poder
+  abogadoNombre: string;
+  abogadoGenero: "mujer" | "varon";
+  abogadoNacionalidad: string;
+  abogadoCedula: string;
+  abogadoCargo: string;
+  abogadoOficinas: string;
+  abogadoTelefonos: string;
+  abogadoCorreos: string;
+  abogadoRecibeNotificaciones: string;
 
-type Estadio = "Preliminar" | "Formal" | "Intermedia" | "Juicio";
+  // Cliente / poderdante
+  tipoPoderdante: TipoPoderdante;
+  clienteNombre: string;
+  clienteGenero: "varon" | "mujer" | "sociedad";
+  clienteNacionalidad: string;
+  clienteCedulaPasaporte: string;
+  clienteDomicilio: string;
+  clienteTelefono: string;
+  clienteCorreos: string;
 
-type EscritoTipo =
-  | "Imputación (CPP 280-281)"
-  | "Acusación (CPP 340)"
-  | "Acusación autónoma (CPP 340)"
-  | "Acción resarcitoria"
-  | "Sobreseimiento (CPP 350)"
-  | "Solicitudes varias"
-  | "Archivo provisional (MP)"
-  | "Solicitud de archivo (Defensa)";
+  // Persona jurídica
+  sociedadNombre: string;
+  sociedadTipo: string;
+  sociedadFolio: string;
+  representanteCargo: string;
 
-interface Branding {
-  entidad: Entidad;
-  nombreEntidad: string; // MP: Fiscalía/Sección; DP: Unidad; Privado: nombre del estudio
-  logoDataUrl?: string;
-  colorPrimario?: string; // hex
-  fuente?: "Times New Roman" | "Arial" | "Garamond";
-  firmaNombre: string;
-  firmaLinea: string; // cargo "Abogado Defensor Particular", "Fiscal de Circuito", etc.
-  domicilio?: string;
-  telefono?: string;
-  correo?: string;
-}
+  // Proceso / destino
+  autoridadDestino: string;
+  asunto: string;
+  tipoProceso: string;
+  contraparte: string;
+  delitoOMateria: string;
+  finalidadPoder: string;
 
-interface Destino {
-  nombre: string; // Ej.: "Sección Primera de Delitos contra el Patrimonio – Fiscalía Metropolitana"
-}
+  // Documento
+  ciudad: string;
+  fechaTexto: string;
+  usarFechaPresentacion: boolean;
+  incluirFacultadesRecursos: boolean;
+  incluirFacultadesTransaccion: boolean;
+  incluirFacultadesSustitucion: boolean;
+  facultadesAdicionales: string;
+};
 
-interface MetaCaso {
-  circuito: string;
-  provincia: string;
-  juzgado?: string; // cuando aplique
-  numeroCausa: string;
-  noticiaCriminal?: string;
-  delito: string;
-  imputado: string;
-  victima?: string;
-  fecha: string; // dd/mm/aaaa
-}
+const initialForm: FormState = {
+  nombreFirma: "RAMOS CHUE & ASOCIADOS",
+  sloganFirma: "CALIDAD Y SEGUIMIENTO",
+  telefonosFirma: "(507) 201-5532/33",
+  faxFirma: "(507) 201-5534",
+  webFirma: "www.rachlaw.com",
+  correoFirma: "info@rachlaw.com",
+  direccionFirma:
+    "Calle 54 Este, Urbanización Obarrio, Edificio PH Twist Tower (Global Hotel), Piso 30, Oficina 30-D, Panamá, República de Panamá",
+  logoDataUrl: "",
+  firmaManuscritaDataUrl: "",
 
-interface AuraIn {
-  que: string; cuando: string; donde: string; relato: string;
-  principiosCPP: string[]; principiosCP: string[];
-  delitoCP: string; estadio: Estadio; grado: "consumado" | "tentativa";
-  rol: Rol;
-}
+  abogadoNombre: "EDNA RAMOS CHUE",
+  abogadoGenero: "mujer",
+  abogadoNacionalidad: "panameña",
+  abogadoCedula: "8-235-1312",
+  abogadoCargo: "abogada en ejercicio",
+  abogadoOficinas:
+    "Calle 54 Este, Urbanización Obarrio, Edificio PH Twist Tower (Global Hotel), Piso 30, Oficina 30-D, de esta ciudad",
+  abogadoTelefonos: "201-5533",
+  abogadoCorreos: "info@rachlaw.com",
+  abogadoRecibeNotificaciones:
+    "lugar donde recibe notificaciones personales",
 
-interface AuraOut {
-  tipicidad: string;
-  consumacion: string;
-  penaMinMax?: { minMeses: number; maxMeses: number };
-  bloquesSugeridos: string[];
-  recomendado: EscritoTipo;
-}
+  tipoPoderdante: "persona_natural",
+  clienteNombre: "",
+  clienteGenero: "varon",
+  clienteNacionalidad: "panameño",
+  clienteCedulaPasaporte: "",
+  clienteDomicilio: "",
+  clienteTelefono: "",
+  clienteCorreos: "",
 
-const hoyPA = () => new Date().toLocaleDateString("es-PA", { day: "2-digit", month: "2-digit", year: "numeric" });
+  sociedadNombre: "",
+  sociedadTipo: "sociedad anónima",
+  sociedadFolio: "",
+  representanteCargo: "Presidente y Representante Legal",
 
-// ===========================================
-//  UI wrappers mínimos
-// ===========================================
-function Box({ children, className = "" }: any) {
-  return <div className={`bg-slate-900/50 border border-white/10 rounded-2xl ${className}`}>{children}</div>;
-}
-function Head({ title, description }: { title: string; description?: string }) {
+  autoridadDestino:
+    "SEÑOR(A) FISCAL DE ATENCIÓN PRIMARIA DE LA FISCALÍA METROPOLITANA:",
+  asunto: "",
+  tipoProceso: "proceso penal",
+  contraparte: "",
+  delitoOMateria: "",
+  finalidadPoder:
+    "que asuman mi representación dentro del proceso indicado, presenten las solicitudes que correspondan y ejerzan las acciones legales necesarias para la defensa de mis derechos e intereses",
+
+  ciudad: "Panamá",
+  fechaTexto: "",
+  usarFechaPresentacion: true,
+  incluirFacultadesRecursos: true,
+  incluirFacultadesTransaccion: true,
+  incluirFacultadesSustitucion: true,
+  facultadesAdicionales: "",
+};
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="p-4 border-b border-white/10">
-      <div className="text-base font-semibold">{title}</div>
-      {description ? <div className="text-xs text-slate-400 mt-0.5">{description}</div> : null}
-    </div>
+    <label className="mb-1 block text-sm font-medium text-slate-300">
+      {children}
+    </label>
   );
 }
-function Section({ children, className = "" }: any) {
-  return <div className={`p-4 ${className}`}>{children}</div>;
-}
-function Btn({ children, onClick, disabled=false, variant="solid", className="" }: any) {
-  const base = variant === "outline" ? "border border-white/20 text-slate-100 hover:bg-white/5" : variant === "secondary" ? "bg-slate-700/70 hover:bg-slate-700 text-white" : "bg-white/10 hover:bg-white/20 text-white";
-  const state = disabled ? "opacity-50 cursor-not-allowed" : "";
+
+function TextInput({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
   return (
-    <button onClick={onClick} disabled={disabled} className={`px-3 py-2 rounded-xl text-sm transition ${base} ${state} ${className}`}>{children}</button>
+    <input
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      onChange={(event) => onChange(event.target.value)}
+      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400/60 focus:ring-2 focus:ring-yellow-400/20"
+    />
   );
 }
-function Label({ children }: any) { return <label className="block text-xs text-slate-300 mb-1">{children}</label>; }
-function Input({ value, onChange, placeholder = "", type = "text" }: any) {
-  return <input type={type} value={value} onChange={onChange} placeholder={placeholder} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20" />;
-}
-function Select({ value, onChange, options }: { value: any; onChange: (v:any)=>void; options: string[] }) {
+
+function TextArea({
+  value,
+  onChange,
+  placeholder,
+  rows = 4,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
   return (
-    <select value={value} onChange={(e)=>onChange(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm">
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
+    <textarea
+      value={value}
+      rows={rows}
+      placeholder={placeholder}
+      onChange={(event) => onChange(event.target.value)}
+      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400/60 focus:ring-2 focus:ring-yellow-400/20"
+    />
+  );
+}
+
+function SelectInput({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400/60 focus:ring-2 focus:ring-yellow-400/20"
+    >
+      {children}
     </select>
   );
 }
-function Textarea({ value, onChange, className = "" }: any) {
-  return <textarea value={value} onChange={onChange} className={`w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 ${className}`} />;
-}
 
-// Tooltip minimalista con botón "Ver más"
-function Tooltip({ title, excerpt, onVerMas }: { title: string; excerpt: string; onVerMas: ()=>void }) {
+function Card({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="absolute z-30 mt-2 w-80 max-w-[22rem] rounded-xl border border-white/10 bg-slate-900/95 p-3 shadow-xl backdrop-blur">
-      <div className="text-xs font-semibold mb-1">{title}</div>
-      <div className="text-xs text-slate-300 leading-relaxed">{excerpt}</div>
-      <div className="mt-2 text-right">
-        <Btn variant="outline" onClick={onVerMas} className="!px-2 !py-1 text-xs">Ver más</Btn>
+    <section className="rounded-2xl border border-white/10 bg-slate-950/60 shadow-xl shadow-black/20">
+      <div className="border-b border-white/10 p-5">
+        <h2 className="text-lg font-semibold text-white">{title}</h2>
+        {description && (
+          <p className="mt-1 text-sm text-slate-400">{description}</p>
+        )}
       </div>
-    </div>
+      <div className="space-y-4 p-5">{children}</div>
+    </section>
   );
 }
 
-// Modal para doctrina extendida
-function Modal({ open, onClose, children, title }: any) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative z-50 w-[min(840px,92vw)] max-h-[88vh] overflow-auto rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-2xl">
-        <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-2">
-          <div className="text-sm font-semibold">{title}</div>
-          <Btn variant="outline" onClick={onClose}>Cerrar</Btn>
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function paragraph(value: string) {
+  return escapeHtml(value).replaceAll("\n", "<br />");
+}
+
+function nombreConTitulo(nombre: string) {
+  if (!nombre.trim()) return "";
+  return nombre.trim().toUpperCase();
+}
+
+function construirComparecencia(form: FormState) {
+  const genero =
+    form.clienteGenero === "mujer"
+      ? "mujer"
+      : form.clienteGenero === "sociedad"
+      ? ""
+      : "varón";
+
+  if (form.tipoPoderdante === "persona_juridica") {
+    return `Quien suscribe, ${form.clienteNombre || "[NOMBRE DEL REPRESENTANTE]"}, ${genero}, ${form.clienteNacionalidad || "[NACIONALIDAD]"}, mayor de edad, con documento de identidad personal No. ${form.clienteCedulaPasaporte || "[CÉDULA/PASAPORTE]"}, con domicilio en ${form.clienteDomicilio || "[DOMICILIO COMPLETO]"}, teléfono ${form.clienteTelefono || "[TELÉFONO]"} y correo electrónico ${form.clienteCorreos || "[CORREO ELECTRÓNICO]"}, actuando en mi condición de ${form.representanteCargo || "[CARGO]"} de la sociedad ${form.sociedadNombre || "[NOMBRE DE LA SOCIEDAD]"}, ${form.sociedadTipo || "sociedad"}, inscrita a Folio Mercantil No. ${form.sociedadFolio || "[FOLIO]"}, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial, amplio y suficiente, a la firma ${form.nombreFirma || "[NOMBRE DE LA FIRMA]"}, representada en este acto por la Lcda. ${form.abogadoNombre || "[NOMBRE DEL ABOGADO]"}, ${form.abogadoGenero === "mujer" ? "mujer" : "varón"}, ${form.abogadoNacionalidad || "[NACIONALIDAD]"}, mayor de edad, con cédula de identidad personal No. ${form.abogadoCedula || "[CÉDULA]"}, ${form.abogadoCargo || "abogada en ejercicio"}, con oficinas en ${form.abogadoOficinas || "[DIRECCIÓN DE OFICINA]"}, con teléfonos No. ${form.abogadoTelefonos || "[TELÉFONOS]"} y correos electrónicos ${form.abogadoCorreos || "[CORREOS]"}, ${form.abogadoRecibeNotificaciones || "lugar donde recibe notificaciones personales"}, con el fin de ${form.finalidadPoder || "[FINALIDAD DEL PODER]"}.`;
+  }
+
+  return `Quien suscribe, ${form.clienteNombre || "[NOMBRE DEL CLIENTE]"}, ${genero}, ${form.clienteNacionalidad || "[NACIONALIDAD]"}, mayor de edad, con documento de identidad personal No. ${form.clienteCedulaPasaporte || "[CÉDULA/PASAPORTE]"}, con domicilio en ${form.clienteDomicilio || "[DOMICILIO COMPLETO]"}, teléfono ${form.clienteTelefono || "[TELÉFONO]"} y correo electrónico ${form.clienteCorreos || "[CORREO ELECTRÓNICO]"}, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial, amplio y suficiente, a la firma ${form.nombreFirma || "[NOMBRE DE LA FIRMA]"}, representada en este acto por la Lcda. ${form.abogadoNombre || "[NOMBRE DEL ABOGADO]"}, ${form.abogadoGenero === "mujer" ? "mujer" : "varón"}, ${form.abogadoNacionalidad || "[NACIONALIDAD]"}, mayor de edad, con cédula de identidad personal No. ${form.abogadoCedula || "[CÉDULA]"}, ${form.abogadoCargo || "abogada en ejercicio"}, con oficinas en ${form.abogadoOficinas || "[DIRECCIÓN DE OFICINA]"}, con teléfonos No. ${form.abogadoTelefonos || "[TELÉFONOS]"} y correos electrónicos ${form.abogadoCorreos || "[CORREOS]"}, ${form.abogadoRecibeNotificaciones || "lugar donde recibe notificaciones personales"}, con el fin de ${form.finalidadPoder || "[FINALIDAD DEL PODER]"}.`;
+}
+
+function construirFacultades(form: FormState) {
+  const facultades = ["recibir"];
+
+  if (form.incluirFacultadesTransaccion) {
+    facultades.push("transigir", "ratificar", "allanarse", "desistir");
+  }
+
+  if (form.incluirFacultadesSustitucion) {
+    facultades.push("sustituir", "reasumir");
+  }
+
+  if (form.incluirFacultadesRecursos) {
+    facultades.push(
+      "interponer recursos",
+      "presentar solicitudes",
+      "promover acciones legales"
+    );
+  }
+
+  const textoBase = `La firma ${form.nombreFirma || "[NOMBRE DE LA FIRMA]"} queda expresamente facultada para ${facultades.join(", ")} y realizar todas las actuaciones necesarias para el ejercicio del presente poder.`;
+
+  if (!form.facultadesAdicionales.trim()) {
+    return textoBase;
+  }
+
+  return `${textoBase}\n\nAsimismo, queda facultada para ${form.facultadesAdicionales.trim()}.`;
+}
+
+function construirAsunto(form: FormState) {
+  if (form.asunto.trim()) {
+    return form.asunto.trim();
+  }
+
+  const partes = [];
+
+  if (form.tipoProceso.trim()) {
+    partes.push(form.tipoProceso.trim());
+  }
+
+  if (form.contraparte.trim()) {
+    partes.push(`en contra de ${form.contraparte.trim()}`);
+  }
+
+  if (form.delitoOMateria.trim()) {
+    partes.push(`por ${form.delitoOMateria.trim()}`);
+  }
+
+  if (form.tipoPoderdante === "persona_juridica" && form.sociedadNombre.trim()) {
+    partes.push(`en representación de ${form.sociedadNombre.trim()}`);
+  } else if (form.clienteNombre.trim()) {
+    partes.push(`en representación de ${form.clienteNombre.trim()}`);
+  }
+
+  return partes.length
+    ? partes.join(" ")
+    : "[DESCRIPCIÓN BREVE DEL PROCESO O ACTUACIÓN]";
+}
+
+function construirDocumentoHtml(form: FormState) {
+  const asunto = construirAsunto(form);
+  const comparecencia = construirComparecencia(form);
+  const facultades = construirFacultades(form);
+  const fecha = form.usarFechaPresentacion
+    ? `${form.ciudad || "Panamá"}, a la fecha de su presentación.`
+    : `${form.ciudad || "Panamá"}, ${form.fechaTexto || "[FECHA]"}.`;
+
+  const otorgante =
+    form.tipoPoderdante === "persona_juridica"
+      ? `${form.sociedadNombre || "[SOCIEDAD]"}<br />${form.clienteNombre || "[REPRESENTANTE LEGAL]"}<br />${form.clienteCedulaPasaporte || "[DOCUMENTO]"}`
+      : `${form.clienteNombre || "[NOMBRE DEL CLIENTE]"}<br />${form.clienteCedulaPasaporte || "[DOCUMENTO]"}`;
+
+  const logo = form.logoDataUrl
+    ? `<img src="${form.logoDataUrl}" style="max-width:220px; max-height:90px; object-fit:contain;" />`
+    : "";
+
+  const firma = form.firmaManuscritaDataUrl
+    ? `<img src="${form.firmaManuscritaDataUrl}" style="max-width:180px; max-height:75px; object-fit:contain; margin-bottom:4px;" />`
+    : "";
+
+  return `
+    <div class="documento">
+      <header class="letterhead">
+        <div class="letterhead-left">
+          ${logo}
+          <div><strong>TELÉFONOS:</strong> ${escapeHtml(form.telefonosFirma)}</div>
+          <div><strong>FAX:</strong> ${escapeHtml(form.faxFirma)}</div>
+          <div>${escapeHtml(form.webFirma)}</div>
+          <div>${escapeHtml(form.correoFirma)}</div>
         </div>
-        <div className="prose prose-invert max-w-none text-sm leading-relaxed mt-3">
-          {children}
+        <div class="letterhead-right">
+          ${paragraph(form.direccionFirma)}
         </div>
-      </div>
+      </header>
+
+      <main>
+        <h1>Poder Especial</h1>
+
+        <p class="asunto">${paragraph(asunto)}</p>
+
+        <p class="autoridad">${paragraph(form.autoridadDestino)}</p>
+
+        <p>${paragraph(comparecencia)}</p>
+
+        <p>${paragraph(facultades)}</p>
+
+        <p>${paragraph(fecha)}</p>
+
+        <div class="firmas">
+          <div class="firma-bloque">
+            <p>Otorga poder,</p>
+            <div class="linea"></div>
+            <p>${otorgante}</p>
+          </div>
+
+          <div class="firma-bloque">
+            <p>Acepta poder,</p>
+            <p><strong>${escapeHtml(form.nombreFirma)}</strong></p>
+            ${firma}
+            <div class="linea"></div>
+            <p>Lcda. ${escapeHtml(nombreConTitulo(form.abogadoNombre) || "[NOMBRE DEL ABOGADO]")}</p>
+          </div>
+        </div>
+      </main>
+
+      ${
+        form.sloganFirma
+          ? `<footer>“${escapeHtml(form.sloganFirma)}”</footer>`
+          : ""
+      }
     </div>
-  );
+  `;
 }
 
-// ===========================================
-//  Catálogos y Doctrina (tooltips)
-// ===========================================
-// Doctrina: estructura para tooltip y modal
-const DOCTRINA: Record<string, { title: string; excerpt: string; full: JSX.Element }> = {
-  "Error de tipo (art. 30)": {
-    title: "Error de tipo (art. 30 CP)",
-    excerpt:
-      "Se yerra sobre un elemento del tipo (por ejemplo, sobre la cosa ajena en hurto). Si el error es invencible, excluye el dolo y la culpabilidad; si es vencible, puede quedar culpa si el tipo la prevé.",
-    full: (
-      <div>
-        <p>
-          El <b>error de tipo</b> recae sobre un elemento descriptivo o normativo del tipo penal. La persona cree que no concurren los
-          elementos del tipo. Según Meini, se trata de la <i>"equivocación sobre los presupuestos fácticos de la prohibición"</i>.
-        </p>
-        <ul>
-          <li>
-            <b>Invencible:</b> excluye el dolo y la culpabilidad (art. 30), sin responsabilidad si no hay tipo culposo aplicable.
-          </li>
-          <li>
-            <b>Vencible:</b> excluye el dolo, pero puede subsistir la <i>culpa</i> si el tipo la prevé.
-          </li>
-        </ul>
-        <p>
-          <b>Ejemplo (Meini, adapt.):</b> quien retira una mochila creyendo de buena fe que es la suya (<i>error sobre la ajenidad</i>),
-          no actúa con dolo de hurto.
-        </p>
-        <p className="text-[11px] text-slate-400">Fuente: Iván Meini, <em>Teoría del Delito</em>, cap. sobre el error.</p>
-      </div>
-    ),
-  },
-  "Error de prohibición (art. 39)": {
-    title: "Error de prohibición (art. 39 CP)",
-    excerpt:
-      "Se yerra sobre la ilicitud del hecho (cree lícito lo prohibido). Invencible: excluye culpabilidad; vencible: atenúa la pena.",
-    full: (
-      <div>
-        <p>
-          El <b>error de prohibición</b> es la falta de conciencia sobre la <i>ilicitud</i> del hecho. No se discute el tipo objetivo, sino la
-          valoración normativa. Meini lo diferencia del error de tipo: aquí el agente sabe lo que hace, pero cree que está permitido.
-        </p>
-        <ul>
-          <li>
-            <b>Invencible:</b> excluye la culpabilidad (art. 39).
-          </li>
-          <li>
-            <b>Vencible:</b> reduce la pena por disminución de culpabilidad.
-          </li>
-        </ul>
-        <p>
-          <b>Ejemplo:</b> turista que caza en zona protegida tras recibir información oficial errónea que lo autorizaba.
-        </p>
-        <p className="text-[11px] text-slate-400">Fuente: Iván Meini, <em>Teoría del Delito</em>.</p>
-      </div>
-    ),
-  },
-  "Error en la punibilidad (doctrina)": {
-    title: "Error en la punibilidad (doctrina)",
-    excerpt:
-      "Equivocación sobre la existencia o alcance de una condición de punibilidad o excusa absolutoria. No altera la tipicidad, pero incide en la punibilidad.",
-    full: (
-      <div>
-        <p>
-          El <b>error en la punibilidad</b> concierne a <i>requisitos de castigabilidad</i> (condiciones objetivas, excusas absolutorias, etc.).
-          La conducta es típica, pero el agente yerra sobre si será punible o no.
-        </p>
-        <p>
-          <b>Ejemplo:</b> en delitos patrimoniales de escasa cuantía con querella necesaria, el autor cree que no se requiere querella y
-          que el Estado perseguirá de oficio.
-        </p>
-        <p className="text-[11px] text-slate-400">Doctrina comparada; síntesis según criterios expuestos por Meini.</p>
-      </div>
-    ),
-  },
-  "Error de tipo permisivo (doctrina)": {
-    title: "Error de tipo permisivo (doctrina)",
-    excerpt:
-      "Error sobre los presupuestos fácticos de una causa de justificación (p. ej., cree existir agresión para legítima defensa). Tratamiento como error de tipo.",
-    full: (
-      <div>
-        <p>
-          En el <b>error de tipo permisivo</b> el agente yerra sobre los <i>hechos</i> que habilitarían una causa de justificación. Se equipara
-          a error de tipo: si es invencible, excluye el dolo; si es vencible, puede quedar culpa si procede.
-        </p>
-        <p>
-          <b>Ejemplo:</b> guarda de seguridad que cree, por señales objetivas pero erróneas, que la víctima intenta asaltarlo.
-        </p>
-        <p className="text-[11px] text-slate-400">Fuente: Iván Meini, <em>Teoría del Delito</em>.</p>
-      </div>
-    ),
-  },
-  "Causas de justificación (arts. 31–33)": {
-    title: "Causas de justificación (arts. 31–33 CP)",
-    excerpt:
-      "Ejercicio legítimo de un derecho, legítima defensa y estado de necesidad. Requieren presupuestos fácticos y límites (proporción/exceso).",
-    full: (
-      <div>
-        <p>
-          Incluye: <b>ejercicio legítimo de un derecho</b> y <b>cumplimiento de un deber</b> (art. 31), <b>legítima defensa</b> con sus tres
-          requisitos (art. 32) y <b>estado de necesidad</b> (art. 33). El <b>exceso</b> se sanciona con reducción (art. 34).
-        </p>
-        <p className="text-[11px] text-slate-400">Base normativa: arts. 31–34 CP; esquema de análisis siguiendo a Meini.</p>
-      </div>
-    ),
-  },
-  "Imputabilidad / inimputabilidad (arts. 35–38)": {
-    title: "Imputabilidad e inimputabilidad (arts. 35–38 CP)",
-    excerpt:
-      "Capacidad de comprender la ilicitud y autodeterminarse. Reglas de embriaguez/intoxicación y caso de imputabilidad disminuida.",
-    full: (
-      <div>
-        <p>
-          La <b>imputabilidad</b> exige capacidad de comprensión y autodeterminación (art. 36). Reglas especiales para <b>embriaguez</b>
-          (art. 37) y <b>imputabilidad disminuida</b> (art. 38). Solo a inimputables: medidas de seguridad (art. 8).
-        </p>
-        <p className="text-[11px] text-slate-400">Síntesis normativa con apoyos doctrinales de Meini.</p>
-      </div>
-    ),
-  },
-  "Tentativa y desistimiento (arts. 48–49)": {
-    title: "Tentativa y desistimiento (arts. 48–49 CP)",
-    excerpt:
-      "Inicia la ejecución con actos idóneos sin consumación por causa ajena. Desistimiento voluntario excluye pena del delito intentado.",
-    full: (
-      <div>
-        <p>
-          Hay <b>tentativa</b> cuando se inician actos idóneos dirigidos a la consumación (art. 48). <b>Desistimiento</b> o impedir el resultado
-          excluye la pena del delito intentado, sin perjuicio de otros ilícitos cometidos (art. 49).
-        </p>
-        <p className="text-[11px] text-slate-400">Marco legal panameño; exposición conforme a Meini.</p>
-      </div>
-    ),
-  },
-};
+function construirDocumentoCompleto(form: FormState) {
+  const body = construirDocumentoHtml(form);
 
-// Principios procesales (CPP) – Libro I, Título I, arts. 1–28
-// ===========================================
-// Principios procesales (CPP) – Libro I, Título I, arts. 1–28
-const PRINCIPIOS_CPP = [
-  "Interpretación y prevalencia de principios (art. 1)",
-  "Legalidad procesal (art. 2)",
-  "Principios del proceso (debido proceso, contradicción, oralidad, etc.) (art. 3)",
-  "Juez natural (art. 4)",
-  "Separación de funciones (art. 5)",
-  "Independencia e imparcialidad (art. 6)",
-  "Prohibición de doble juzgamiento (art. 7)",
-  "Inocencia (art. 8)",
-  "Publicidad del proceso (art. 9)",
-  "Derecho a la defensa (art. 10)",
-  "Libertades personales (art. 11)",
-  "Control judicial de afectación de derechos (art. 12)",
-  "Derecho a la intimidad (art. 13)",
-  "Respeto a los derechos humanos (art. 14)",
-  "Justicia en tiempo razonable (art. 15)",
-  "Derecho a no declarar contra sí mismo (art. 16)",
-  "Validez de la prueba (art. 17)",
-  "Lealtad y buena fe (art. 18)",
-  "Igualdad procesal (art. 19)",
-  "Protección de la víctima y colaboradores (art. 20)",
-  "Interpretación restrictiva (art. 21)",
-  "Motivación (art. 22)",
-  "Impugnación (art. 23)",
-  "Investigación objetiva (art. 24)",
-  "Control judicial de la pena (art. 25)",
-  "Solución del conflicto (art. 26)",
-  "Gratuidad (art. 27)",
-  "Diversidad cultural (art. 28)",
-  // Plus: mantenemos proporcionalidad 221 como ayuda para medidas
-  "Proporcionalidad de medidas cautelares (CPP art. 221)",
-];
+  return `
+    <!DOCTYPE html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <title>Poder Especial</title>
+        <style>
+          @page {
+            size: letter;
+            margin: 1in;
+          }
 
-// Principios penales (CP) – Libro I, con claves para tooltips doctrinales
-const PRINCIPIOS_CP = [
-  "Dignidad humana (art. 1)",
-  "Intervención mínima (arts. 2–3)",
-  "Legalidad penal y tipicidad (arts. 4, 9, 12, 16)",
-  "Retroactividad favorable (art. 14)",
-  "Necesidad, proporcionalidad y razonabilidad (art. 6)",
-  "Funciones de la pena (art. 7)",
-  "Inimputables y medidas de seguridad (art. 8)",
-  "Dolo (arts. 26–27)",
-  "Culpa (art. 28)",
-  "Caso fortuito / fuerza mayor (art. 29)",
-  "Error de tipo (art. 30)",
-  "Causas de justificación (arts. 31–33)",
-  "Exceso en causas de justificación (art. 34)",
-  "Imputabilidad / inimputabilidad (arts. 35–38)",
-  "Error de prohibición (art. 39)",
-  "Obediencia debida / miedo insuperable (art. 40–42)",
-  "Límites culturales a eximentes (art. 42-A)",
-  "Autoría y participación (arts. 43–47)",
-  "Tentativa y desistimiento (arts. 48–49)",
-  "Error en la punibilidad (doctrina)",
-  "Error de tipo permisivo (doctrina)",
-];
+          body {
+            margin: 0;
+            background: #ffffff;
+            color: #111827;
+            font-family: "Times New Roman", Times, serif;
+            font-size: 12pt;
+            line-height: 1.45;
+          }
 
-// === Catálogo completo de Delitos (Libro Segundo del Código Penal) ===
-// Estructura: Título → Capítulo → (opcional) Sección → Delitos (cuando el capítulo no detalla, usamos descriptor de capítulo)
+          .documento {
+            max-width: 8.5in;
+            margin: 0 auto;
+            background: #ffffff;
+          }
 
-interface DelitoNodo {
-  titulo: string;
-  capitulos: { nombre: string; secciones?: { nombre: string; delitos?: string[] }[]; delitos?: string[] }[];
+          .letterhead {
+            display: flex;
+            justify-content: space-between;
+            gap: 28px;
+            margin-bottom: 42px;
+            font-size: 9pt;
+            line-height: 1.25;
+          }
+
+          .letterhead-left,
+          .letterhead-right {
+            width: 50%;
+          }
+
+          .letterhead-right {
+            text-align: right;
+          }
+
+          h1 {
+            text-align: center;
+            font-size: 16pt;
+            margin: 0 0 18px 0;
+            text-decoration: underline;
+          }
+
+          p {
+            margin: 0 0 14px 0;
+            text-align: justify;
+          }
+
+          .asunto {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 22px;
+          }
+
+          .autoridad {
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 16px;
+          }
+
+          .firmas {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 52px;
+            margin-top: 48px;
+          }
+
+          .firma-bloque {
+            text-align: center;
+          }
+
+          .firma-bloque p {
+            text-align: center;
+            margin-bottom: 8px;
+          }
+
+          .linea {
+            border-top: 1px solid #111827;
+            height: 1px;
+            margin: 42px auto 8px auto;
+            width: 85%;
+          }
+
+          footer {
+            text-align: center;
+            font-size: 10pt;
+            font-weight: bold;
+            margin-top: 64px;
+          }
+        </style>
+      </head>
+      <body>
+        ${body}
+      </body>
+    </html>
+  `;
 }
 
-const CATALOGO_DELITOS: DelitoNodo[] = [
-  { titulo: "Título I - Delitos contra la Vida y la Integridad Personal",
-    capitulos: [
-      { nombre: "Capítulo I - Delitos contra la Vida Humana",
-        secciones: [
-          { nombre: "Sección 1ª - Homicidio", delitos: ["Homicidio doloso", "Homicidio agravado", "Homicidio culposo"] },
-          { nombre: "Sección 2ª - Lesiones Personales", delitos: ["Lesiones personales", "Lesiones agravadas", "Lesiones culposas"] },
-          { nombre: "Sección 3ª - Aborto Provocado", delitos: ["Aborto provocado", "Aborto consentido"] },
-        ]
-      },
-      { nombre: "Capítulo II - Reproducción y Manipulación Genética" },
-      { nombre: "Capítulo III - Abandono de Niños y otras Personas Incapaces" },
-    ]
-  },
-  { titulo: "Título II - Delitos contra la Libertad",
-    capitulos: [
-      { nombre: "Capítulo I - Libertad Individual y Desaparición Forzada" },
-      { nombre: "Capítulo II - Inviolabilidad del Domicilio o Lugar de Trabajo" },
-      { nombre: "Capítulo III - Inviolabilidad del Secreto y Derecho a la Intimidad" },
-      { nombre: "Capítulo IV - Libertad de Reunión y de Prensa" },
-      { nombre: "Capítulo V - Libertad de Culto" },
-    ]
-  },
-  { titulo: "Título III - Delitos contra la Libertad e Integridad Sexual",
-    capitulos: [
-      { nombre: "Capítulo I - Violación y otros Delitos Sexuales" },
-      { nombre: "Capítulo II - Corrupción de Menores y Explotación Sexual Comercial" },
-      { nombre: "Capítulo III - Disposición Común" },
-    ]
-  },
-  { titulo: "Título IV - Delitos contra el Honor de la Persona Natural",
-    capitulos: [
-      { nombre: "Capítulo I - Injuria y Calumnia", delitos: ["Injuria", "Calumnia"] },
-      { nombre: "Capítulo II - Disposiciones Comunes" },
-    ]
-  },
-  { titulo: "Título V - Delitos contra el Orden Jurídico Familiar y el Estado Civil",
-    capitulos: [
-      { nombre: "Capítulo I - Violencia Doméstica", delitos: ["Violencia doméstica"] },
-      { nombre: "Capítulo II - Maltrato de Niño, Niña o Adolescente" },
-      { nombre: "Capítulo III - Identidad y Tráfico de Personas Menores de Edad" },
-      { nombre: "Capítulo IV - Delitos contra la Familia" },
-    ]
-  },
-  { titulo: "Título VI - Delitos contra el Patrimonio Económico",
-    capitulos: [
-      { nombre: "Capítulo I - Hurto", delitos: ["Hurto simple", "Hurto agravado"] },
-      { nombre: "Capítulo II - Robo", delitos: ["Robo simple", "Robo agravado"] },
-      { nombre: "Capítulo III - Estafa y otros Fraudes", delitos: ["Estafa", "Fraude", "Cheques sin fondos (si aplica por remisión)"] },
-      { nombre: "Capítulo IV - Apropiación Indebida", delitos: ["Apropiación indebida"] },
-      { nombre: "Capítulo V - Usurpación", delitos: ["Usurpación"] },
-      { nombre: "Capítulo VI - Daños", delitos: ["Daños"] },
-      { nombre: "Capítulo VII - Patrimonio Histórico de la Nación" },
-      { nombre: "Capítulo VIII - Disposiciones Comunes" },
-    ]
-  },
-  { titulo: "Título VII - Delitos contra el Orden Económico",
-    capitulos: [
-      { nombre: "Capítulo I - Libre Competencia y Derechos de Consumidores" },
-      { nombre: "Capítulo II - Retención Indebida de Cuotas" },
-      { nombre: "Capítulo III - Delitos Financieros" },
-      { nombre: "Capítulo IV - Blanqueo de Capitales", delitos: ["Blanqueo de capitales"] },
-      { nombre: "Capítulo V - Seguridad Económica" },
-      { nombre: "Capítulo VI - Propiedad Intelectual",
-        secciones: [
-          { nombre: "Sección 1ª - Derecho de Autor y Conexos" },
-          { nombre: "Sección 2ª - Propiedad Industrial" },
-          { nombre: "Sección 3ª - Derechos Colectivos de Pueblos Indígenas" },
-          { nombre: "Sección 4ª - Disposiciones Comunes" },
-        ]
-      },
-      { nombre: "Capítulo VII - Insolvencias Punibles" },
-      { nombre: "Capítulo VIII - Competencia Desleal" },
-      { nombre: "Capítulo IX - Cheques y Tarjetas de Crédito" },
-      { nombre: "Capítulo X - Revelación de Secretos Empresariales" },
-      { nombre: "Capítulo XI - Contrabando y Defraudación Aduanera" },
-      { nombre: "Capítulo XII - Delitos contra el Tesoro Nacional" },
-    ]
-  },
-  { titulo: "Título VIII - Delitos contra la Seguridad Jurídica de los Medios Electrónicos",
-    capitulos: [ { nombre: "Capítulo I - Delitos Contra la Seguridad Informática" } ]
-  },
-  { titulo: "Título IX - Delitos Contra la Seguridad Colectiva",
-    capitulos: [
-      { nombre: "Capítulo I - Terrorismo y Financiamiento" },
-      { nombre: "Capítulo II - Peligro Común" },
-      { nombre: "Capítulo III - Medios de Transporte" },
-      { nombre: "Capítulo IV - Salud Pública" },
-      { nombre: "Capítulo V - Drogas" },
-      { nombre: "Capítulo VI - Piratería" },
-      { nombre: "Capítulo VII - Delincuencia Organizada" },
-      { nombre: "Capítulo VIII - Asociación Ilícita" },
-      { nombre: "Capítulo IX - Armas y Explosivos" },
-      { nombre: "Capítulo X - Material Ilícito (apropiación y sustracción violenta)" },
-      { nombre: "Capítulo XI - Disposiciones Comunes" },
-    ]
-  },
-  { titulo: "Título X - Delitos Contra la Administración Pública",
-    capitulos: [
-      { nombre: "Capítulo I - Peculado", delitos: ["Peculado"] },
-      { nombre: "Capítulo II - Corrupción de Servidores Públicos", delitos: ["Corrupción de servidores públicos"] },
-      { nombre: "Capítulo III - Enriquecimiento Injustificado" },
-      { nombre: "Capítulo IV - Concusión y Exacción" },
-      { nombre: "Capítulo V - Tráfico de influencias" },
-      { nombre: "Capítulo VI - Abuso de Autoridad e Infracción de Deberes" },
-      { nombre: "Capítulo VII - Delitos Contra los Servidores Públicos" },
-      { nombre: "Capítulo VIII - Violación de Sellos Públicos" },
-      { nombre: "Capítulo IX - Fraude en Contratación Pública" },
-    ]
-  },
-  { titulo: "Título XI - Delitos Contra la Fe Pública",
-    capitulos: [
-      { nombre: "Capítulo I - Falsificación de Documento en General", delitos: ["Falsificación de documento"] },
-      { nombre: "Capítulo II - Falsificación de Moneda y otros Valores" },
-      { nombre: "Capítulo III - Falsificación de Sellos Públicos" },
-      { nombre: "Capítulo IV - Ejercicio Ilegal de una Profesión" },
-    ]
-  },
-  { titulo: "Título XII - Delitos contra la Administración de Justicia",
-    capitulos: [
-      { nombre: "Capítulo I - Simulación de Hechos Punibles y Calumnia en Actuaciones" },
-      { nombre: "Capítulo II - Falso Testimonio" },
-      { nombre: "Capítulo III - Prevaricato" },
-      { nombre: "Capítulo IV - Encubrimiento" },
-      { nombre: "Capítulo V - Tráfico y Receptación de Cosas Provenientes del Delito" },
-      { nombre: "Capítulo VI - Evasión" },
-      { nombre: "Capítulo VII - Hacerse Justicia por Sí Mismo" },
-      { nombre: "Capítulo VIII - Quebrantamiento de Medidas de Protección y Sanciones" },
-      { nombre: "Capítulo IX - Apología del Delito" },
-    ]
-  },
-  { titulo: "Título XIII - Delitos Contra el Ambiente y el Orden Territorial",
-    capitulos: [
-      { nombre: "Capítulo I - Recursos Naturales" },
-      { nombre: "Capítulo II - Vida Silvestre" },
-      { nombre: "Capítulo III - Urbanístico Territorial" },
-      { nombre: "Capítulo IV - Contra los Animales Domésticos" },
-      { nombre: "Capítulo V - Disposiciones Comunes" },
-    ]
-  },
-  { titulo: "Título XIV - Delitos Contra la Personalidad Jurídica del Estado",
-    capitulos: [
-      { nombre: "Capítulo I - Personalidad Internacional del Estado" },
-      { nombre: "Capítulo II - Personalidad Interna del Estado" },
-    ]
-  },
-  { titulo: "Título XV - Delitos contra la Humanidad",
-    capitulos: [
-      { nombre: "Capítulo I - Derechos Humanos (DIH)" },
-      { nombre: "Capítulo II - Personas y Bienes Protegidos por DIH" },
-      { nombre: "Capítulo III - Disposiciones Comunes" },
-      { nombre: "Capítulo IV - Trata de Personas" },
-      { nombre: "Capítulo V - Tráfico Ilícito de Migrantes" },
-    ]
-  },
-];
+export default function EscritosPage() {
+  const [form, setForm] = useState<FormState>(initialForm);
 
-// Utilidad: construir selects dependientes y valor final de "delitoCP"
-const TITULOS = CATALOGO_DELITOS.map(t=>t.titulo);
-function capitulosDe(titulo: string) { return (CATALOGO_DELITOS.find(t=>t.titulo===titulo)?.capitulos||[]).map(c=>c.nombre); }
-function delitosDe(titulo: string, cap: string): string[] {
-  const capObj = CATALOGO_DELITOS.find(t=>t.titulo===titulo)?.capitulos.find(c=>c.nombre===cap);
-  const direct = capObj?.delitos||[];
-  const secc = (capObj?.secciones||[]).flatMap(s=> s.delitos||[]);
-  const all = [...direct, ...secc];
-  // Si el capítulo no trae delitos desglosados, ofertamos el propio capítulo como selección
-  return all.length ? all : [cap + " (todos)"];
-}
+  const documentoHtml = useMemo(() => construirDocumentoHtml(form), [form]);
 
-// Mock de pena por tipo (solo para summary contextual)
-const PENA_POR_DELITO: Record<string,{min:number,max:number}> = {
-  "Homicidio doloso": {min:144, max:360},
-  "Homicidio agravado": {min:180, max:420},
-  "Homicidio culposo": {min:6, max:48},
-  "Lesiones personales": {min:6, max:84},
-  "Lesiones agravadas": {min:12, max:120},
-  "Lesiones culposas": {min:3, max:24},
-  "Aborto provocado": {min:12, max:72},
-  "Aborto consentido": {min:6, max:48},
-  "Hurto simple": {min:12, max:48},
-  "Hurto agravado": {min:24, max:84},
-  "Robo simple": {min:48, max:108},
-  "Robo agravado": {min:60, max:144},
-  "Estafa": {min:12, max:72},
-  "Fraude": {min:12, max:72},
-  "Cheques sin fondos (si aplica por remisión)": {min:6, max:36},
-  "Apropiación indebida": {min:6, max:48},
-  "Usurpación": {min:6, max:36},
-  "Daños": {min:6, max:36},
-  "Peculado": {min:72, max:180},
-  "Corrupción de servidores públicos": {min:48, max:144},
-  "Falsificación de documento": {min:24, max:96},
-  "Blanqueo de capitales": {min:60, max:144},
-  "Violencia doméstica": {min:12, max:60},
-};
-
-// ===========================================
-//  Lógica: encabezados y reglas de dirigido a
-// ===========================================
-function construirEncabezado(branding: Branding, destino: Destino | null, tipo: EscritoTipo, meta: MetaCaso) {
-  const fecha = meta.fecha || hoyPA();
-  let tituloSuperior = "";
-  if (branding.entidad === "Ministerio Público") {
-    tituloSuperior = `República de Panamá – Ministerio Público\n${branding.nombreEntidad}`;
-  } else if (branding.entidad === "Defensa Pública") {
-    tituloSuperior = `República de Panamá – Defensa Pública\n${branding.nombreEntidad}`;
-  } else {
-    tituloSuperior = `Despacho ${branding.nombreEntidad}`; // Despacho privado
-  }
-
-  let dirigido = "";
-  const esArchivoMP = (tipo === "Archivo provisional (MP)");
-  const esSolicitudArchivoDef = (tipo === "Solicitud de archivo (Defensa)");
-
-  if (esArchivoMP) {
-    dirigido = ""; // solo rótulo del despacho MP
-  } else if (esSolicitudArchivoDef && destino) {
-    dirigido = `\nDirigido a: ${destino.nombre}`;
-  } else if (destino) {
-    dirigido = `\nDirigido a: ${destino.nombre}`;
-  }
-
-  return `${tituloSuperior}\n${meta.provincia}, ${fecha}${dirigido}\n\n`;
-}
-
-// ===========================================
-//  Aura Penalista (mock determinista en front)
-// ===========================================
-function ejecutarAura(input: AuraIn): AuraOut {
-  const pena = PENA_POR_DELITO[input.delitoCP];
-  const bloques: string[] = [];
-  let recomendado: EscritoTipo = "Solicitudes varias";
-
-  if (input.rol === "Fiscalía") {
-    if (input.estadio === "Intermedia" || input.estadio === "Juicio") recomendado = "Acusación (CPP 340)"; else recomendado = "Imputación (CPP 280-281)";
-  } else if (input.rol === "Defensa") {
-    if (input.estadio === "Preliminar" || input.estadio === "Formal") recomendado = "Solicitudes varias"; else recomendado = "Sobreseimiento (CPP 350)";
-  } else if (input.rol === "Querella") {
-    recomendado = "Acción resarcitoria";
-  }
-
-  // Bloques sugeridos básicos
-  if (input.principiosCPP.includes("Proporcionalidad de medidas cautelares (CPP art. 221)")) bloques.push("proporcionalidad-221");
-  if (input.principiosCP.some(p=>p.includes("Legalidad penal"))) bloques.push("legalidad");
-  if (input.grado === "tentativa") bloques.push("tentativa-82");
-
-  return {
-    tipicidad: input.delitoCP,
-    consumacion: input.grado,
-    penaMinMax: pena ? {minMeses: pena.min, maxMeses: pena.max}: undefined,
-    bloquesSugeridos: bloques,
-    recomendado,
+  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
-}
 
-// ===========================================
-//  Plantillas (machotes) – expresiones panameñas
-//  Sin "Con la venia…"; redacción forense local
-// ===========================================
-function bloqueFirma(branding: Branding) {
-  const firma = [branding.firmaNombre, branding.firmaLinea, branding.entidad === "Despacho Privado" ? `Despacho ${branding.nombreEntidad}` : branding.nombreEntidad].filter(Boolean).join("\n");
-  const contacto = [branding.domicilio, branding.telefono, branding.correo].filter(Boolean).join(" | ");
-  return `\n\n__________________________________\n${firma}${contacto ? `\n${contacto}`: ""}`;
-}
+  const cargarImagen = (
+    file: File | undefined,
+    key: "logoDataUrl" | "firmaManuscritaDataUrl"
+  ) => {
+    if (!file) return;
 
-function plantillaImputacion(meta: MetaCaso, branding: Branding, destino: Destino | null, aura: AuraOut) {
-  const enc = construirEncabezado(branding, destino, "Imputación (CPP 280-281)", meta);
-  return (
-`${enc}` +
-`ASUNTO: IMPUTACIÓN (arts. 280 y 281 CPP)\n\n` +
-`Comparece quien suscribe, actuando en mi condición de ${branding.firmaLinea}, y expone:\n\n` +
-`I. HECHO PUNIBLE ATRIBUIDO\nSe atribuye al ciudadano ${meta.imputado} la comisión del delito de ${meta.delito}${meta.victima?` en perjuicio de ${meta.victima}`:""}.\n\n` +
-`II. CALIFICACIÓN JURÍDICA PROVISIONAL\n${aura.tipicidad}${aura.consumacion === "tentativa"? " en grado de tentativa (art. 82 CP)":""}.\n\n` +
-`III. ELEMENTOS DE CONVICCIÓN RELEVANTES\nSe enumeran sumariamente los elementos recabados en la investigación preliminar.\n\n` +
-`IV. COMUNICACIÓN DE DERECHOS (art. 281 CPP)\nSe deja constancia de que se informan al imputado sus derechos y garantías.\n\n` +
-`V. PETICIÓN\nSe tenga por formalizada la imputación y se continúe con el trámite legal correspondiente.\n` + bloqueFirma(branding)
-  );
-}
-
-function plantillaAcusacion(meta: MetaCaso, branding: Branding, destino: Destino | null, aura: AuraOut) {
-  const enc = construirEncabezado(branding, destino, "Acusación (CPP 340)", meta);
-  return (
-`${enc}` +
-`ESCRITO DE ACUSACIÓN (art. 340 CPP)\n\n` +
-`Comparece quien suscribe, en mi condición de ${branding.firmaLinea}, y solicita:\n\n` +
-`I. IDENTIFICACIÓN DE LAS PARTES\nImputado: ${meta.imputado}. ${meta.victima? `Víctima: ${meta.victima}.` : ""}\n\n` +
-`II. RELACIÓN CLARA Y PRECISA DE LOS HECHOS\n${aura.tipicidad}. Hechos conforme a las diligencias practicadas.\n\n` +
-`III. CALIFICACIÓN JURÍDICA\n${aura.tipicidad}${aura.consumacion === "tentativa"? " en grado de tentativa (art. 82 CP)":""}.\n\n` +
-`IV. FUNCIÓN Y PARTICIPACIÓN\nSe indica la forma de intervención del imputado.\n\n` +
-`V. PRUEBAS OFRECIDAS Y SU PERTINENCIA\nListado de pruebas, finalidad y pertinencia.\n\n` +
-`VI. PETITORIO\nSe solicita apertura a juicio oral y la práctica de los medios de prueba señalados.\n` + bloqueFirma(branding)
-  );
-}
-
-function plantillaAcusacionAutonoma(meta: MetaCaso, branding: Branding, destino: Destino | null, aura: AuraOut) {
-  const enc = construirEncabezado(branding, destino, "Acusación autónoma (CPP 340)", meta);
-  return (
-`${enc}` +
-`ACUSACIÓN AUTÓNOMA (art. 340 CPP)\n\n` +
-`Comparece quien suscribe, actuando como ${branding.firmaLinea}, y presenta acusación con los siguientes apartados:\n\n` +
-`I. PARTES\nImputado: ${meta.imputado}. ${meta.victima? `Víctima: ${meta.victima}.` : ""}\n\n` +
-`II. HECHOS\nRelación clara y circunstanciada.\n\n` +
-`III. CALIFICACIÓN\n${aura.tipicidad}${aura.consumacion === "tentativa"? " en grado de tentativa (art. 82 CP)":""}.\n\n` +
-`IV. PRUEBA\nEnumeración de medios probatorios y pertinencia.\n\n` +
-`V. PETICIÓN\nSe admita la acusación y se fije audiencia conforme a derecho.\n` + bloqueFirma(branding)
-  );
-}
-
-function plantillaResarcitoria(meta: MetaCaso, branding: Branding, destino: Destino | null) {
-  const enc = construirEncabezado(branding, destino, "Acción resarcitoria", meta);
-  return (
-`${enc}` +
-`ACCIÓN RESARCITORIA\n\n` +
-`Comparezco en representación de la parte afectada y expongo:\n\n` +
-`I. HECHOS DAÑOSOS\nNarrativa de los hechos y el daño ocasionado.\n\n` +
-`II. NEXO CAUSAL Y RESPONSABILIDAD\nVinculación entre la acción y el daño.\n\n` +
-`III. CUANTIFICACIÓN\nDetalle del quantum reclamado y su sustento.\n\n` +
-`IV. PRUEBA\nRelación de documentos, peritajes y testigos.\n\n` +
-`V. PETICIÓN\nSe acoja la pretensión resarcitoria y se condene al pago correspondiente.\n` + bloqueFirma(branding)
-  );
-}
-
-function plantillaSobreseimiento(meta: MetaCaso, branding: Branding, destino: Destino | null) {
-  const enc = construirEncabezado(branding, destino, "Sobreseimiento (CPP 350)", meta);
-  return (
-`${enc}` +
-`SOLICITUD DE SOBRESEIMIENTO (art. 350 CPP)\n\n` +
-`Comparece la defensa técnica y solicita:\n\n` +
-`I. ANTECEDENTES\nSíntesis de la causa y actuaciones relevantes.\n\n` +
-`II. CAUSAL INVOCADA\nSe fundamenta la causal del art. 350 aplicable (atipicidad, inexistencia de hecho, falta de autoría, prescripción, cosa juzgada, etc.).\n\n` +
-`III. MOTIVACIÓN\nSe explica la incidencia jurídica y la improcedencia de continuar el proceso.\n\n` +
-`IV. PETITORIO\nSe decrete el sobreseimiento en favor del imputado.\n` + bloqueFirma(branding)
-  );
-}
-
-function plantillaSolicitudes(meta: MetaCaso, branding: Branding, destino: Destino | null) {
-  const enc = construirEncabezado(branding, destino, "Solicitudes varias", meta);
-  return (
-`${enc}` +
-`SOLICITUDES VARIAS\n\n` +
-`Comparece esta parte y solicita lo siguiente:\n\n` +
-`1) Advertencia de nulidad: se expone el defecto, su trascendencia y oportunidad.\n2) Práctica de actos de investigación: se justifica pertinencia, utilidad y conducencia.\n3) Consideraciones de la defensa/querella: fundamentos y solicitudes concretas.\n\n` +
-`Se sirva proveer conforme a derecho.\n` + bloqueFirma(branding)
-  );
-}
-
-function plantillaArchivoMP(meta: MetaCaso, branding: Branding) {
-  const enc = construirEncabezado(branding, null, "Archivo provisional (MP)", meta);
-  return (
-`${enc}` +
-`ARCHIVO PROVISIONAL\n\n` +
-`I. ANTECEDENTES\nSe exponen los elementos recabados y su insuficiencia actual.\n\n` +
-`II. MOTIVACIÓN\nNo se han reunido elementos de convicción suficientes para sustentar acusación, sin perjuicio de reabrir si surgen nuevos elementos.\n\n` +
-`III. RESUELVO\nOrdenar el archivo provisional conforme al CPP.\n` + bloqueFirma(branding)
-  );
-}
-
-function plantillaSolicitudArchivoDef(meta: MetaCaso, branding: Branding, destino: Destino) {
-  const enc = construirEncabezado(branding, destino, "Solicitud de archivo (Defensa)", meta);
-  return (
-`${enc}` +
-`SOLICITUD DE ARCHIVO\n\n` +
-`La defensa técnica expone fundamentos de hecho y derecho que evidencian la improcedencia de continuar con la investigación, solicitando el archivo de las actuaciones.\n\n` +
-`Fundamentos: insuficiencia de elementos de convicción, principio de intervención mínima, racionalidad investigativa.\n\n` +
-`Petición: se disponga el archivo y se notifique conforme a derecho.\n` + bloqueFirma(branding)
-  );
-}
-
-// Motor selector de plantilla
-function generarEscrito(tipo: EscritoTipo, meta: MetaCaso, branding: Branding, destino: Destino | null, aura: AuraOut): string {
-  switch (tipo) {
-    case "Imputación (CPP 280-281)": return plantillaImputacion(meta, branding, destino, aura);
-    case "Acusación (CPP 340)": return plantillaAcusacion(meta, branding, destino, aura);
-    case "Acusación autónoma (CPP 340)": return plantillaAcusacionAutonoma(meta, branding, destino, aura);
-    case "Acción resarcitoria": return plantillaResarcitoria(meta, branding, destino);
-    case "Sobreseimiento (CPP 350)": return plantillaSobreseimiento(meta, branding, destino);
-    case "Solicitudes varias": return plantillaSolicitudes(meta, branding, destino);
-    case "Archivo provisional (MP)": return plantillaArchivoMP(meta, branding);
-    case "Solicitud de archivo (Defensa)": return plantillaSolicitudArchivoDef(meta, branding, destino as Destino);
-  }
-}
-
-// ===========================================
-//  Página principal (Wizard 3 pasos)
-// ===========================================
-export default function EscritosWizard() {
-  // Paso activo
-  const [step, setStep] = useState<1|2|3>(1);
-
-  // Paso 1 – Branding & Destino
-  const [rol, setRol] = useState<Rol>("Defensa");
-  const [entidad, setEntidad] = useState<Entidad>("Despacho Privado");
-  const [branding, setBranding] = useState<Branding>({
-    entidad: "Despacho Privado",
-    nombreEntidad: "Bufete Ejemplar & Asociados",
-    colorPrimario: "#0ea5e9",
-    fuente: "Times New Roman",
-    firmaNombre: "Licda. Andrea Gómez R.",
-    firmaLinea: "Abogada Defensora Particular",
-    domicilio: "Calle 50, Ciudad de Panamá",
-    telefono: "+507 6000-0000",
-    correo: "contacto@ejemplar.pa",
-  });
-  const [destino, setDestino] = useState<Destino>({ nombre: "Sección de Homicidios – Fiscalía Metropolitana" });
-  const fileRef = useRef<HTMLInputElement|null>(null);
-
-  // Paso 2 – Aura Penalista (inputs base)
-  const [auraIn, setAuraIn] = useState<AuraIn>({
-    que: "Agresión con arma blanca en vía pública",
-    cuando: "12/07/2025, 21:30",
-    donde: "Calidonia, Ciudad de Panamá",
-    relato: "Relato breve de los hechos…",
-    principiosCPP: ["Derecho a la defensa (art. 10)", "Proporcionalidad de medidas cautelares (CPP art. 221)"],
-    principiosCP: ["Legalidad penal y tipicidad (arts. 4, 9, 12, 16)", "Dolo (arts. 26–27)"],
-    delitoCP: "Robo agravado",
-    estadio: "Intermedia",
-    grado: "consumado",
-    rol: "Defensa",
-  });
-  const auraOut = useMemo(()=> ejecutarAura(auraIn), [auraIn]);
-
-  // Selección jerárquica de Delitos (Libro II)
-  const [selTitulo, setSelTitulo] = useState<string>(TITULOS[0]);
-  const [selCap, setSelCap] = useState<string>(capitulosDe(TITULOS[0])[0]);
-  const [selDelito, setSelDelito] = useState<string>(delitosDe(TITULOS[0], capitulosDe(TITULOS[0])[0])[0]);
-
-  // Sincroniza selección jerárquica con auraIn.delitoCP
-  useEffect(()=>{
-    setAuraIn(prev=> ({...prev, delitoCP: selDelito }));
-  }, [selDelito]);
-
-  // Al cambiar Título o Capítulo, recalcular las dependencias
-  useEffect(()=>{
-    const caps = capitulosDe(selTitulo);
-    const cap = caps[0];
-    setSelCap(cap);
-    const dels = delitosDe(selTitulo, cap);
-    setSelDelito(dels[0]);
-  }, [selTitulo]);
-  useEffect(()=>{
-    const dels = delitosDe(selTitulo, selCap);
-    setSelDelito(dels[0]);
-  }, [selCap]);
-
-  // Paso 3 – Redacción
-  const [tipo, setTipo] = useState<EscritoTipo>("Sobreseimiento (CPP 350)");
-  const [meta, setMeta] = useState<MetaCaso>({
-    circuito: "Primer Circuito Judicial",
-    provincia: "Panamá",
-    juzgado: "Juzgado de Garantías del Primer Circuito Judicial",
-    numeroCausa: "2025-000000",
-    noticiaCriminal: "2025-123456",
-    delito: "Robo agravado",
-    imputado: "Juan Pérez Castillo",
-    victima: "María López R.",
-    fecha: hoyPA(),
-  });
-  const [texto, setTexto] = useState("");
-
-  // Tooltip/Modal state
-  const [hoverKey, setHoverKey] = useState<string|null>(null);
-  const [modalKey, setModalKey] = useState<string|null>(null);
-
-  // Persistencia de branding
-  useEffect(()=>{
-    const s = localStorage.getItem("flowp_branding");
-    if (s) try { setBranding(JSON.parse(s)); } catch {}
-  },[]);
-  useEffect(()=>{
-    localStorage.setItem("flowp_branding", JSON.stringify(branding));
-  },[branding]);
-
-  const cargarLogo = async (file: File) => {
     const reader = new FileReader();
-    reader.onload = () => setBranding({ ...branding, logoDataUrl: String(reader.result) });
+
+    reader.onload = () => {
+      update(key, String(reader.result || ""));
+    };
+
     reader.readAsDataURL(file);
   };
 
-  const generar = () => {
-    const doc = generarEscrito(tipo, meta, branding, (tipo==="Archivo provisional (MP)"? null : destino), auraOut);
-    setTexto(doc);
+  const copiarTextoPlano = async () => {
+    const temp = document.createElement("div");
+    temp.innerHTML = documentoHtml;
+    const texto = temp.innerText;
+    await navigator.clipboard.writeText(texto);
+    alert("Texto copiado al portapapeles.");
   };
 
-  const descargarPDF = async () => {
-    if (!texto.trim()) return;
-    // Normaliza texto eliminando leyendas heredadas
-    const cleanText = texto
-      .replace(/Generado\s+con\s+FlowPen(al|eal)\s+by\s+Lex\s+Vence/gi, "")
-      .replace(/Con\s+la\s+venia\s+del\s+despacho,?\s*señor\s*juez:?/gi, "")
-      .replace(/Con\s+la\s+venia\s+del\s*juez:?/gi, "")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+  const descargarWord = () => {
+    const html = construirDocumentoCompleto(form);
+    const blob = new Blob([html], {
+      type: "application/msword;charset=utf-8",
+    });
 
-    // Evitar error de build: usamos import dinámico NO literal
-    const dynImport = (p: string) => import(/* @vite-ignore */ p as any);
-    const pdfPath = ["..", "..", "/lib", "/pdf-generator"].join("");
-    try {
-      const mod: any = await dynImport(pdfPath);
-      const contentStyled = `\f${branding.fuente}\n` + cleanText;
-      const blob = await mod.generatePDF({ title: `${tipo} – ${meta.numeroCausa}`, content: contentStyled, branding: { color: branding.colorPrimario, logoUrl: branding.logoDataUrl } });
-      mod.downloadPDF(blob, `${tipo.toLowerCase().replace(/\s+/g,"-")}-${Date.now()}.pdf`);
-      return;
-    } catch (e) {
-      // Si el módulo no existe o falla, usamos fallback inmediato sin romper build
-      console.warn("pdf-generator no disponible, usando fallback DOC/TXT", e);
-    }
-    // Fallback 1: DOC (abre en Word y permite guardar como PDF)
-    try {
-      const safe = (s:string)=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-      const html = `<!doctype html><html><head><meta charset=\"utf-8\"><style>body{font-family:${branding.fuente||"Times New Roman"};white-space:pre-wrap}</style></head><body>${safe(cleanText)}</body></html>`;
-      const blob = new Blob([html], { type: "application/msword" });
-      const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`${tipo.toLowerCase().replace(/\s+/g,"-")}-${Date.now()}.doc`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      return;
-    } catch {}
-    // Fallback 2: TXT
-    const blob = new Blob([cleanText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`${tipo.toLowerCase().replace(/\s+/g,"-")}-${Date.now()}.txt`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  };
-  const descargarDOC = () => {
-    if (!texto.trim()) return;
-    const cleanText = texto
-      .replace(/Generado\s+con\s+FlowPen(al|eal)\s+by\s+Lex\s+Vence/gi, "")
-      .replace(/Con\s+la\s+venia\s+del\s+despacho,?\s*señor\s*juez:?/gi, "")
-      .replace(/Con\s+la\s+venia\s+del\s*juez:?/gi, "")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-    const safe = (s:string)=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:${branding.fuente||"Times New Roman"};white-space:pre-wrap}</style></head><body>${safe(cleanText)}</body></html>`;
-    const blob = new Blob([html], { type: "application/msword" });
-    const url = URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`${tipo.toLowerCase().replace(/\s+/g,"-")}-${Date.now()}.doc`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement("a");
+
+    enlace.href = url;
+    enlace.download = "poder-especial.doc";
+    enlace.click();
+
+    URL.revokeObjectURL(url);
   };
 
-  // =====================
-  // Test Cases (no modificar los existentes; agregamos nuevos)
-  // =====================
-  const test = (id:string) => {
-    if (id === "acusacion-demo") {
-      setRol("Fiscalía"); setEntidad("Ministerio Público"); setBranding(b=>({...b, entidad:"Ministerio Público", nombreEntidad:"Sección de Homicidios – Fiscalía Metropolitana", firmaLinea:"Fiscal de Circuito", firmaNombre:"Licdo. Carlos Rivera" }));
-      setTipo("Acusación (CPP 340)"); setMeta(m=>({...m, delito:"Homicidio doloso", imputado:"Luis Delgado M.", victima:"Ana Castillo P.", numeroCausa:"2025-111111"}));
-      setDestino({ nombre:"Juzgado de Juicio Oral del Primer Circuito" });
-      setSelTitulo("Título I - Delitos contra la Vida y la Integridad Personal");
-      setSelCap("Capítulo I - Delitos contra la Vida Humana");
-      setSelDelito("Homicidio doloso");
-    } else if (id === "sobreseimiento-demo") {
-      setRol("Defensa"); setEntidad("Despacho Privado"); setBranding(b=>({...b, entidad:"Despacho Privado", nombreEntidad:"Despacho Justicia & Derecho", firmaLinea:"Abogado Defensor Particular", firmaNombre:"Licda. Sofía Torres" }));
-      setTipo("Sobreseimiento (CPP 350)"); setMeta(m=>({...m, delito:"Estafa", imputado:"Pedro Moreno R.", victima:"Comercial ABC, S.A.", numeroCausa:"2025-222222"}));
-      setDestino({ nombre:"Juzgado de Garantías del Primer Circuito" });
-      setSelTitulo("Título VI - Delitos contra el Patrimonio Económico");
-      setSelCap("Capítulo III - Estafa y otros Fraudes");
-      setSelDelito("Estafa");
-    } else if (id === "imputacion-demo") {
-      setRol("Fiscalía"); setEntidad("Ministerio Público"); setBranding(b=>({...b, entidad:"Ministerio Público", nombreEntidad:"Fiscalía Metropolitana – Sección Patrimonio", firmaLinea:"Fiscal Adjunta", firmaNombre:"Licda. Mariel Pardo" }));
-      setTipo("Imputación (CPP 280-281)"); setMeta(m=>({...m, delito:"Hurto agravado", imputado:"Javier Núñez L.", victima:"Laura Ríos T.", numeroCausa:"2025-333333"}));
-      setDestino({ nombre:"Juzgado de Garantías del Primer Circuito" });
-      setSelTitulo("Título VI - Delitos contra el Patrimonio Económico");
-      setSelCap("Capítulo I - Hurto");
-      setSelDelito("Hurto agravado");
-    } else if (id === "archivo-mp-demo") {
-      setRol("Fiscalía"); setEntidad("Ministerio Público"); setBranding(b=>({...b, entidad:"Ministerio Público", nombreEntidad:"Sección de Delitos Informáticos – Fiscalía Metropolitana", firmaLinea:"Fiscal de Sección", firmaNombre:"Licdo. Hugo Villar" }));
-      setTipo("Archivo provisional (MP)"); setMeta(m=>({...m, delito:"Estafa", imputado:"N.N.", victima:"Tecnología Panamá S.A.", numeroCausa:"2025-444444"}));
-      setSelTitulo("Título VI - Delitos contra el Patrimonio Económico");
-      setSelCap("Capítulo III - Estafa y otros Fraudes");
-      setSelDelito("Estafa");
-    } else if (id === "sol-archivo-def-demo") {
-      setRol("Defensa"); setEntidad("Despacho Privado"); setBranding(b=>({...b, entidad:"Despacho Privado", nombreEntidad:"Bufete Litoral", firmaLinea:"Abogado Defensor Particular", firmaNombre:"Licdo. Iván Salcedo" }));
-      setTipo("Solicitud de archivo (Defensa)"); setMeta(m=>({...m, delito:"Robo agravado", imputado:"Roberto Díaz V.", victima:"SuperMercados Unidos S.A.", numeroCausa:"2025-555555"}));
-      setDestino({ nombre:"Sección de Propiedad – Fiscalía Metropolitana" });
-      setSelTitulo("Título VI - Delitos contra el Patrimonio Económico");
-      setSelCap("Capítulo II - Robo");
-      setSelDelito("Robo agravado");
+  const imprimir = () => {
+    const ventana = window.open("", "_blank");
+
+    if (!ventana) return;
+
+    ventana.document.write(construirDocumentoCompleto(form));
+    ventana.document.close();
+    ventana.focus();
+    ventana.print();
+  };
+
+  const limpiar = () => {
+    const confirmar = window.confirm(
+      "¿Desea limpiar el formulario y volver a los valores iniciales?"
+    );
+
+    if (confirmar) {
+      setForm(initialForm);
     }
   };
-
-  // Auto-genera si no hay texto y cambia parámetros
-  useEffect(()=>{ if (!texto.trim()) setTexto(generarEscrito(tipo, meta, branding, (tipo==="Archivo provisional (MP)"?null:destino), auraOut)); /* eslint-disable-next-line */ },[tipo, meta, branding, destino, auraOut]);
-
-  const puedeExportar = Boolean(texto.trim());
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur sticky top-0 z-20">
-        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
-          <Link href="/" className="inline-flex items-center text-slate-300 hover:text-white transition text-sm">← Inicio</Link>
-          <div className="ml-auto flex items-center gap-2">
-            <Btn variant="outline" onClick={()=>test("acusacion-demo")}>Test Acusación</Btn>
-            <Btn variant="outline" onClick={()=>test("sobreseimiento-demo")}>Test Sobreseimiento</Btn>
-            <Btn variant="outline" onClick={()=>test("imputacion-demo")}>Test Imputación</Btn>
-            <Btn variant="outline" onClick={()=>test("archivo-mp-demo")}>Test Archivo MP</Btn>
-            <Btn variant="outline" onClick={()=>test("sol-archivo-def-demo")}>Test Solicitud de Archivo (Defensa)</Btn>
+    <div className="min-h-screen bg-slate-950 text-white">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+          <Link
+            href="/"
+            className="rounded-xl px-3 py-2 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white"
+          >
+            ← Inicio
+          </Link>
+
+          <div className="text-center">
+            <h1 className="text-lg font-semibold">Generador de Escritos</h1>
+            <p className="text-xs text-slate-400">
+              Módulo inicial: Poder Especial
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={copiarTextoPlano}
+              className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-200 hover:bg-white/10"
+            >
+              Copiar
+            </button>
+            <button
+              onClick={descargarWord}
+              className="rounded-xl bg-yellow-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-yellow-300"
+            >
+              Descargar Word
+            </button>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-        {/* Paso 1 – Branding & Destino */}
-        <Box>
-          <Head title="Paso 1 – Identidad y destino" description="Rol, entidad, branding y despacho destinatario" />
-          <Section className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <Label>Rol</Label>
-                <Select value={rol} onChange={(v:Rol)=>setRol(v)} options={["Fiscalía","Defensa","Querella"]} />
-              </div>
-              <div>
-                <Label>Tipo de entidad</Label>
-                <Select value={entidad} onChange={(v:Entidad)=>{ setEntidad(v); setBranding({...branding, entidad:v}); }} options={["Ministerio Público","Defensa Pública","Despacho Privado"]} />
-              </div>
-              <div>
-                <Label>Fuente del documento</Label>
-                <Select value={branding.fuente||"Times New Roman"} onChange={(v:any)=>setBranding({...branding, fuente:v})} options={["Times New Roman","Arial","Garamond"]} />
-              </div>
+      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-8 lg:grid-cols-[430px_1fr]">
+        <div className="space-y-6">
+          <Card
+            title="1. Tipo de escrito"
+            description="Por ahora se conserva únicamente la opción de Poder Especial."
+          >
+            <div>
+              <FieldLabel>Escrito disponible</FieldLabel>
+              <SelectInput value="poder_especial" onChange={() => {}}>
+                <option value="poder_especial">Poder Especial</option>
+              </SelectInput>
+            </div>
+          </Card>
+
+          <Card
+            title="2. Branding de la firma"
+            description="Datos que aparecerán en el membrete y en la aceptación del poder."
+          >
+            <div>
+              <FieldLabel>Nombre de la firma</FieldLabel>
+              <TextInput
+                value={form.nombreFirma}
+                onChange={(value) => update("nombreFirma", value)}
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <Label>{entidad === "Despacho Privado" ? "Nombre del Estudio Jurídico" : "Nombre de la Fiscalía/Unidad"}</Label>
-                <Input value={branding.nombreEntidad} onChange={(e:any)=>setBranding({...branding, nombreEntidad:e.target.value})} />
-              </div>
-              <div>
-                <Label>Color institucional (hex)</Label>
-                <Input type="color" value={branding.colorPrimario||"#0ea5e9"} onChange={(e:any)=>setBranding({...branding, colorPrimario:e.target.value})} />
-              </div>
-              <div>
-                <Label>Logo (PNG/JPG)</Label>
-                <div className="flex gap-2 items-center">
-                  <Btn variant="secondary" onClick={()=>fileRef.current?.click()}>Subir logo</Btn>
-                  {branding.logoDataUrl ? <span className="text-xs text-slate-400">Logo cargado</span> : <span className="text-xs text-slate-500">Sin logo</span>}
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e:any)=> e.target.files?.[0] && cargarLogo(e.target.files[0])} />
-                </div>
-              </div>
+            <div>
+              <FieldLabel>Slogan</FieldLabel>
+              <TextInput
+                value={form.sloganFirma}
+                onChange={(value) => update("sloganFirma", value)}
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <Label>Firma – Nombre</Label>
-                <Input value={branding.firmaNombre} onChange={(e:any)=>setBranding({...branding, firmaNombre:e.target.value})} />
-              </div>
-              <div>
-                <Label>Firma – Línea (cargo)</Label>
-                <Input value={branding.firmaLinea} onChange={(e:any)=>setBranding({...branding, firmaLinea:e.target.value})} />
-              </div>
-              <div>
-                <Label>Domicilio profesional (opcional)</Label>
-                <Input value={branding.domicilio||""} onChange={(e:any)=>setBranding({...branding, domicilio:e.target.value})} />
-              </div>
+            <div>
+              <FieldLabel>Teléfonos</FieldLabel>
+              <TextInput
+                value={form.telefonosFirma}
+                onChange={(value) => update("telefonosFirma", value)}
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <Label>Teléfono (opcional)</Label>
-                <Input value={branding.telefono||""} onChange={(e:any)=>setBranding({...branding, telefono:e.target.value})} />
-              </div>
-              <div>
-                <Label>Correo (opcional)</Label>
-                <Input value={branding.correo||""} onChange={(e:any)=>setBranding({...branding, correo:e.target.value})} />
-              </div>
-              <div>
-                <Label>Despacho destinatario</Label>
-                <Input value={destino?.nombre||""} onChange={(e:any)=>setDestino({ nombre:e.target.value })} />
-              </div>
+            <div>
+              <FieldLabel>Fax</FieldLabel>
+              <TextInput
+                value={form.faxFirma}
+                onChange={(value) => update("faxFirma", value)}
+              />
             </div>
 
-            <div className="flex gap-2">
-              <Btn onClick={()=>setStep(2)}>Continuar a Aura Penalista</Btn>
-              <Btn variant="secondary" onClick={()=>setTexto("")}>Limpiar</Btn>
+            <div>
+              <FieldLabel>Sitio web</FieldLabel>
+              <TextInput
+                value={form.webFirma}
+                onChange={(value) => update("webFirma", value)}
+              />
             </div>
-          </Section>
-        </Box>
 
-        {/* Paso 2 – Aura Penalista */}
-        {step>=2 && (
-          <Box>
-            <Head title="Paso 2 – Aura Penalista" description="Normaliza hechos, principios, delito y estadio; genera un resumen con doctrina (Meini)" />
-            <Section className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label>¿Qué?</Label>
-                  <Input value={auraIn.que} onChange={(e:any)=>setAuraIn({...auraIn, que:e.target.value})} />
+            <div>
+              <FieldLabel>Correo de la firma</FieldLabel>
+              <TextInput
+                value={form.correoFirma}
+                onChange={(value) => update("correoFirma", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Dirección de la firma</FieldLabel>
+              <TextArea
+                value={form.direccionFirma}
+                onChange={(value) => update("direccionFirma", value)}
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Logo de la firma</FieldLabel>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) =>
+                  cargarImagen(event.target.files?.[0], "logoDataUrl")
+                }
+                className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
+              />
+              {form.logoDataUrl && (
+                <div className="mt-3 rounded-xl bg-white p-3">
+                  <img
+                    src={form.logoDataUrl}
+                    alt="Logo de la firma"
+                    className="max-h-20 object-contain"
+                  />
                 </div>
-                <div>
-                  <Label>¿Cuándo?</Label>
-                  <Input value={auraIn.cuando} onChange={(e:any)=>setAuraIn({...auraIn, cuando:e.target.value})} />
+              )}
+            </div>
+          </Card>
+
+          <Card
+            title="3. Abogado que acepta poder"
+            description="Datos del abogado o representante de la firma."
+          >
+            <div>
+              <FieldLabel>Nombre del abogado</FieldLabel>
+              <TextInput
+                value={form.abogadoNombre}
+                onChange={(value) => update("abogadoNombre", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Género</FieldLabel>
+              <SelectInput
+                value={form.abogadoGenero}
+                onChange={(value) =>
+                  update("abogadoGenero", value as "mujer" | "varon")
+                }
+              >
+                <option value="mujer">Mujer</option>
+                <option value="varon">Varón</option>
+              </SelectInput>
+            </div>
+
+            <div>
+              <FieldLabel>Nacionalidad</FieldLabel>
+              <TextInput
+                value={form.abogadoNacionalidad}
+                onChange={(value) => update("abogadoNacionalidad", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Cédula</FieldLabel>
+              <TextInput
+                value={form.abogadoCedula}
+                onChange={(value) => update("abogadoCedula", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Cargo / condición</FieldLabel>
+              <TextInput
+                value={form.abogadoCargo}
+                onChange={(value) => update("abogadoCargo", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Oficinas</FieldLabel>
+              <TextArea
+                value={form.abogadoOficinas}
+                onChange={(value) => update("abogadoOficinas", value)}
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Teléfonos</FieldLabel>
+              <TextInput
+                value={form.abogadoTelefonos}
+                onChange={(value) => update("abogadoTelefonos", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Correos electrónicos</FieldLabel>
+              <TextInput
+                value={form.abogadoCorreos}
+                onChange={(value) => update("abogadoCorreos", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Firma manuscrita opcional</FieldLabel>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) =>
+                  cargarImagen(
+                    event.target.files?.[0],
+                    "firmaManuscritaDataUrl"
+                  )
+                }
+                className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
+              />
+              {form.firmaManuscritaDataUrl && (
+                <div className="mt-3 rounded-xl bg-white p-3">
+                  <img
+                    src={form.firmaManuscritaDataUrl}
+                    alt="Firma manuscrita"
+                    className="max-h-20 object-contain"
+                  />
                 </div>
-                <div>
-                  <Label>¿Dónde?</Label>
-                  <Input value={auraIn.donde} onChange={(e:any)=>setAuraIn({...auraIn, donde:e.target.value})} />
-                </div>
-              </div>
+              )}
+            </div>
+          </Card>
+
+          <Card
+            title="4. Cliente / poderdante"
+            description="Datos de la persona natural o representante legal."
+          >
+            <div>
+              <FieldLabel>Tipo de poderdante</FieldLabel>
+              <SelectInput
+                value={form.tipoPoderdante}
+                onChange={(value) =>
+                  update("tipoPoderdante", value as TipoPoderdante)
+                }
+              >
+                <option value="persona_natural">Persona natural</option>
+                <option value="persona_juridica">
+                  Persona jurídica / sociedad
+                </option>
+              </SelectInput>
+            </div>
+
+            <div>
+              <FieldLabel>
+                {form.tipoPoderdante === "persona_juridica"
+                  ? "Nombre del representante legal"
+                  : "Nombre del cliente"}
+              </FieldLabel>
+              <TextInput
+                value={form.clienteNombre}
+                onChange={(value) => update("clienteNombre", value)}
+                placeholder="Ejemplo: Juan Pérez Castillo"
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Género</FieldLabel>
+              <SelectInput
+                value={form.clienteGenero}
+                onChange={(value) =>
+                  update(
+                    "clienteGenero",
+                    value as "varon" | "mujer" | "sociedad"
+                  )
+                }
+              >
+                <option value="varon">Varón</option>
+                <option value="mujer">Mujer</option>
+              </SelectInput>
+            </div>
+
+            <div>
+              <FieldLabel>Nacionalidad</FieldLabel>
+              <TextInput
+                value={form.clienteNacionalidad}
+                onChange={(value) => update("clienteNacionalidad", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Cédula / pasaporte</FieldLabel>
+              <TextInput
+                value={form.clienteCedulaPasaporte}
+                onChange={(value) => update("clienteCedulaPasaporte", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Domicilio completo</FieldLabel>
+              <TextArea
+                value={form.clienteDomicilio}
+                onChange={(value) => update("clienteDomicilio", value)}
+                rows={3}
+                placeholder="Urbanización, calle, edificio, apartamento/oficina, corregimiento, distrito y provincia"
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Teléfono</FieldLabel>
+              <TextInput
+                value={form.clienteTelefono}
+                onChange={(value) => update("clienteTelefono", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Correos electrónicos</FieldLabel>
+              <TextInput
+                value={form.clienteCorreos}
+                onChange={(value) => update("clienteCorreos", value)}
+              />
+            </div>
+          </Card>
+
+          {form.tipoPoderdante === "persona_juridica" && (
+            <Card
+              title="5. Datos de la sociedad"
+              description="Solo aplica cuando el poder lo otorga una sociedad."
+            >
               <div>
-                <Label>Relato</Label>
-                <Textarea className="min-h-[120px]" value={auraIn.relato} onChange={(e:any)=>setAuraIn({...auraIn, relato:e.target.value})} />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label>Principios (CPP)</Label>
-                  <select multiple value={auraIn.principiosCPP} onChange={(e:any)=>{
-                    const vals = Array.from(e.target.selectedOptions).map((o:any)=>o.value);
-                    setAuraIn({...auraIn, principiosCPP: vals});
-                  }} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm min-h-[160px]">
-                    {PRINCIPIOS_CPP.map(p=> <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <Label>Principios penales (CP)</Label>
-                  <select multiple value={auraIn.principiosCP} onChange={(e:any)=>{
-                    const vals = Array.from(e.target.selectedOptions).map((o:any)=>o.value);
-                    setAuraIn({...auraIn, principiosCP: vals});
-                  }} className="w-full px-3 py-2 rounded-xl bg-slate-800/60 border border-white/10 outline-none focus:ring-2 focus:ring-white/20 text-sm min-h-[160px]">
-                    {PRINCIPIOS_CP.map(p=> <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <Label>Delito (Libro II del CP)</Label>
-                  {/* Selector jerárquico: Título → Capítulo → Delito */}
-                  <div className="space-y-2">
-                    <Select value={selTitulo} onChange={(v:any)=>setSelTitulo(v)} options={TITULOS} />
-                    <Select value={selCap} onChange={(v:any)=>setSelCap(v)} options={capitulosDe(selTitulo)} />
-                    <Select value={selDelito} onChange={(v:any)=>setSelDelito(v)} options={delitosDe(selTitulo, selCap)} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Doctrina con tooltips y botón Ver más */}
-              <Box>
-                <Head title="Doctrina de excepciones (Meini)" description="Pasa el cursor por los íconos para leer y haz clic en Ver más" />
-                <Section>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {[
-                      "Error de tipo (art. 30)",
-                      "Error de prohibición (art. 39)",
-                      "Error en la punibilidad (doctrina)",
-                      "Error de tipo permisivo (doctrina)",
-                      "Causas de justificación (arts. 31–33)",
-                      "Imputabilidad / inimputabilidad (arts. 35–38)",
-                      "Tentativa y desistimiento (arts. 48–49)",
-                    ].map((k)=>{
-                      const item = DOCTRINA[k];
-                      return (
-                        <div key={k} className="relative">
-                          <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-800/50 px-3 py-2">
-                            <div className="text-xs font-medium">{item.title}</div>
-                            <button
-                              onMouseEnter={()=>setHoverKey(k)}
-                              onMouseLeave={()=>setHoverKey((prev)=> prev===k ? null : prev)}
-                              onFocus={()=>setHoverKey(k)}
-                              onBlur={()=>setHoverKey(null)}
-                              className="text-xs px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5"
-                              aria-label={`Ver explicación breve de ${item.title}`}
-                            >ℹ︎</button>
-                          </div>
-                          {hoverKey===k && (
-                            <div className="relative">
-                              <Tooltip title={item.title} excerpt={item.excerpt} onVerMas={()=>{ setModalKey(k); setHoverKey(null); }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="text-[10px] text-slate-400 mt-3">Fuente doctrinal: Iván Meini, <em>Teoría del Delito</em> (citas adaptadas para uso didáctico).</div>
-                </Section>
-              </Box>
-
-              <Box className="border-white/10">
-                <Head title="Resumen de Aura" />
-                <Section>
-                  <div className="text-sm">
-                    <div><b>Tipicidad:</b> {auraOut.tipicidad}</div>
-                    <div><b>Consumación:</b> {auraOut.consumacion}</div>
-                    {auraOut.penaMinMax && <div><b>Pena (meses):</b> {auraOut.penaMinMax.minMeses} – {auraOut.penaMinMax.maxMeses}</div>}
-                    <div><b>Bloques sugeridos:</b> {auraOut.bloquesSugeridos.join(", ") || "(ninguno)"}</div>
-                    <div><b>Escrito recomendado:</b> {auraOut.recomendado}</div>
-                  </div>
-                </Section>
-              </Box>
-
-              <div className="flex gap-2">
-                <Btn onClick={()=>{ setTipo(auraOut.recomendado); setStep(3); }}>Usar recomendado y continuar</Btn>
-                <Btn variant="secondary" onClick={()=>setStep(3)}>Continuar sin cambiar</Btn>
-              </div>
-            </Section>
-          </Box>
-        )}
-
-        {/* Paso 3 – Redacción y Exportación */}
-        {step>=3 && (
-          <Box>
-            <Head title="Paso 3 – Redacción" description="Estructura por artículo aplicable (CPP/CP) con bloques sugeridos" />
-            <Section className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label>Tipo de escrito</Label>
-                  <Select value={tipo} onChange={(v:any)=>setTipo(v)} options={[
-                    "Imputación (CPP 280-281)",
-                    "Acusación (CPP 340)",
-                    "Acusación autónoma (CPP 340)",
-                    "Acción resarcitoria",
-                    "Sobreseimiento (CPP 350)",
-                    "Solicitudes varias",
-                    "Archivo provisional (MP)",
-                    "Solicitud de archivo (Defensa)"
-                  ]} />
-                </div>
-                <div>
-                  <Label>N° de causa</Label>
-                  <Input value={meta.numeroCausa} onChange={(e:any)=>setMeta({...meta, numeroCausa:e.target.value})} />
-                </div>
-                <div>
-                  <Label>Noticia criminal</Label>
-                  <Input value={meta.noticiaCriminal||""} onChange={(e:any)=>setMeta({...meta, noticiaCriminal:e.target.value})} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label>Delito</Label>
-                  <Input value={meta.delito} onChange={(e:any)=>setMeta({...meta, delito:e.target.value})} />
-                </div>
-                <div>
-                  <Label>Imputado</Label>
-                  <Input value={meta.imputado} onChange={(e:any)=>setMeta({...meta, imputado:e.target.value})} />
-                </div>
-                <div>
-                  <Label>Víctima</Label>
-                  <Input value={meta.victima||""} onChange={(e:any)=>setMeta({...meta, victima:e.target.value})} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label>Juzgado</Label>
-                  <Input value={meta.juzgado||""} onChange={(e:any)=>setMeta({...meta, juzgado:e.target.value})} />
-                </div>
-                <div>
-                  <Label>Circuito</Label>
-                  <Input value={meta.circuito} onChange={(e:any)=>setMeta({...meta, circuito:e.target.value})} />
-                </div>
-                <div>
-                  <Label>Provincia</Label>
-                  <Input value={meta.provincia} onChange={(e:any)=>setMeta({...meta, provincia:e.target.value})} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label>Fecha</Label>
-                  <Input value={meta.fecha} onChange={(e:any)=>setMeta({...meta, fecha:e.target.value})} />
-                </div>
-                <div>
-                  <Label>Despacho destinatario</Label>
-                  <Input value={destino?.nombre||""} onChange={(e:any)=>setDestino({ nombre:e.target.value })} />
-                </div>
+                <FieldLabel>Nombre de la sociedad</FieldLabel>
+                <TextInput
+                  value={form.sociedadNombre}
+                  onChange={(value) => update("sociedadNombre", value)}
+                />
               </div>
 
               <div>
-                <Label>Borrador editable</Label>
-                <Textarea className="min-h-[360px]" value={texto} onChange={(e:any)=>setTexto(e.target.value)} />
+                <FieldLabel>Tipo de sociedad</FieldLabel>
+                <TextInput
+                  value={form.sociedadTipo}
+                  onChange={(value) => update("sociedadTipo", value)}
+                />
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Btn onClick={generar}>Regenerar con estructura legal</Btn>
-                <Btn onClick={descargarPDF} disabled={!puedeExportar}>Descargar PDF</Btn>
-                <Btn onClick={descargarDOC} disabled={!puedeExportar} variant="secondary">Descargar DOC</Btn>
+              <div>
+                <FieldLabel>Folio mercantil</FieldLabel>
+                <TextInput
+                  value={form.sociedadFolio}
+                  onChange={(value) => update("sociedadFolio", value)}
+                />
               </div>
-            </Section>
-          </Box>
-        )}
-      </div>
 
-      {/* Modal de doctrina extendida */}
-      <Modal open={Boolean(modalKey)} onClose={()=>setModalKey(null)} title={modalKey ? DOCTRINA[modalKey].title : ""}>
-        {modalKey ? DOCTRINA[modalKey].full : null}
-        <hr className="my-3 border-white/10" />
-        <p className="text-[11px] text-slate-400">Cita doctrinal: Iván Meini, <em>Teoría del Delito</em> (referencias para estudio y argumentación). Este módulo ofrece explicación pedagógica; la cita literal debe consultarse en la obra.</p>
-      </Modal>
+              <div>
+                <FieldLabel>Cargo del representante</FieldLabel>
+                <TextInput
+                  value={form.representanteCargo}
+                  onChange={(value) => update("representanteCargo", value)}
+                />
+              </div>
+            </Card>
+          )}
+
+          <Card
+            title="6. Proceso / destino"
+            description="Información del despacho, proceso y finalidad concreta del poder."
+          >
+            <div>
+              <FieldLabel>Autoridad o despacho destinatario</FieldLabel>
+              <TextArea
+                value={form.autoridadDestino}
+                onChange={(value) => update("autoridadDestino", value)}
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Asunto completo del poder</FieldLabel>
+              <TextArea
+                value={form.asunto}
+                onChange={(value) => update("asunto", value)}
+                rows={4}
+                placeholder="Ejemplo: Querella en contra de... por delito... en perjuicio de..."
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Tipo de proceso</FieldLabel>
+              <TextInput
+                value={form.tipoProceso}
+                onChange={(value) => update("tipoProceso", value)}
+                placeholder="Proceso penal, demanda de nulidad, querella, etc."
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Contraparte / persona contra quien se dirige</FieldLabel>
+              <TextInput
+                value={form.contraparte}
+                onChange={(value) => update("contraparte", value)}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Delito, materia o actuación</FieldLabel>
+              <TextArea
+                value={form.delitoOMateria}
+                onChange={(value) => update("delitoOMateria", value)}
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Finalidad del poder</FieldLabel>
+              <TextArea
+                value={form.finalidadPoder}
+                onChange={(value) => update("finalidadPoder", value)}
+                rows={4}
+              />
+            </div>
+          </Card>
+
+          <Card
+            title="7. Facultades y fecha"
+            description="Bloque preconstituido de facultades generales."
+          >
+            <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-slate-900/50 p-3 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.incluirFacultadesTransaccion}
+                onChange={(event) =>
+                  update("incluirFacultadesTransaccion", event.target.checked)
+                }
+                className="mt-1"
+              />
+              <span>
+                Incluir facultades para transigir, ratificar, allanarse y
+                desistir.
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-slate-900/50 p-3 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.incluirFacultadesSustitucion}
+                onChange={(event) =>
+                  update("incluirFacultadesSustitucion", event.target.checked)
+                }
+                className="mt-1"
+              />
+              <span>Incluir facultades para sustituir y reasumir.</span>
+            </label>
+
+            <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-slate-900/50 p-3 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.incluirFacultadesRecursos}
+                onChange={(event) =>
+                  update("incluirFacultadesRecursos", event.target.checked)
+                }
+                className="mt-1"
+              />
+              <span>
+                Incluir facultades para interponer recursos, presentar
+                solicitudes y promover acciones legales.
+              </span>
+            </label>
+
+            <div>
+              <FieldLabel>Facultades adicionales</FieldLabel>
+              <TextArea
+                value={form.facultadesAdicionales}
+                onChange={(value) => update("facultadesAdicionales", value)}
+                rows={3}
+                placeholder="Ejemplo: retirar copias, solicitar autenticaciones, gestionar notificaciones..."
+              />
+            </div>
+
+            <div>
+              <FieldLabel>Ciudad</FieldLabel>
+              <TextInput
+                value={form.ciudad}
+                onChange={(value) => update("ciudad", value)}
+              />
+            </div>
+
+            <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-slate-900/50 p-3 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={form.usarFechaPresentacion}
+                onChange={(event) =>
+                  update("usarFechaPresentacion", event.target.checked)
+                }
+                className="mt-1"
+              />
+              <span>Usar frase: “a la fecha de su presentación”.</span>
+            </label>
+
+            {!form.usarFechaPresentacion && (
+              <div>
+                <FieldLabel>Fecha en texto</FieldLabel>
+                <TextInput
+                  value={form.fechaTexto}
+                  onChange={(value) => update("fechaTexto", value)}
+                  placeholder="Ejemplo: 5 de junio de 2026"
+                />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+              <button
+                onClick={imprimir}
+                className="w-full rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-white/10"
+              >
+                Imprimir / PDF
+              </button>
+
+              <button
+                onClick={limpiar}
+                className="w-full rounded-xl border border-red-400/30 px-4 py-3 text-sm font-semibold text-red-200 hover:bg-red-400/10"
+              >
+                Limpiar
+              </button>
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:sticky lg:top-24 lg:self-start">
+          <Card
+            title="Vista previa"
+            description="Así se generará el poder especial. Puede copiarlo, imprimirlo o descargarlo en formato Word."
+          >
+            <div className="rounded-xl bg-white p-4 text-slate-950">
+              <div
+                className="mx-auto min-h-[900px] max-w-[816px] bg-white p-8 text-[12pt] leading-relaxed shadow-2xl"
+                style={{ fontFamily: "Times New Roman, Times, serif" }}
+                dangerouslySetInnerHTML={{ __html: documentoHtml }}
+              />
+            </div>
+          </Card>
+        </div>
+      </main>
     </div>
   );
 }
