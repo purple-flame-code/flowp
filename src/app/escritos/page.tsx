@@ -14,6 +14,8 @@ type FormState = {
   webFirma: string;
   correoFirma: string;
   direccionFirma: string;
+
+  headerMembreteDataUrl: string;
   logoDataUrl: string;
   firmaManuscritaDataUrl: string;
 
@@ -69,6 +71,7 @@ const initialForm: FormState = {
   direccionFirma:
     "APARTADO 0831-00674, ZONA PAITILLA\nPANAMÁ, REP. DE PANAMÁ\nCALLE 54 OBARRIO (diagonal a Generali)\nEDIFICIO TWIST TOWER 54 (Global Hotel)\nPISO 30, OFICINAS 30-D",
 
+  headerMembreteDataUrl: "",
   logoDataUrl: "",
   firmaManuscritaDataUrl: "",
 
@@ -102,7 +105,7 @@ const initialForm: FormState = {
   autoridadDestino:
     "SEÑOR(A) FISCAL DE ATENCIÓN PRIMARIA DE LA FISCALÍA METROPOLITANA:",
   descripcionInvestigacion: "",
-  tipoProceso: "Querella",
+  tipoProceso: "Investigación seguida",
   contraparte: "",
   delitoOMateria: "",
   perjudicado: "",
@@ -243,7 +246,7 @@ function construirDescripcionInvestigacion(form: FormState) {
     form.sociedadNombre.trim() ||
     "__________";
 
-  return `${tipo} en contra de ${contraparte} por la supuesta comisión de un delito contra ${delito} en perjuicio de ${perjudicado}.`;
+  return `${tipo} a ${contraparte} por la comisión de un delito contra ${delito} en perjuicio de ${perjudicado}.`;
 }
 
 function construirComparecencia(form: FormState) {
@@ -356,6 +359,33 @@ function construirFacultades(form: FormState) {
   return `${textoBase}\n\nAsimismo, queda facultada para ${form.facultadesAdicionales.trim()}.`;
 }
 
+function construirHeaderFallback(form: FormState) {
+  const logo = form.logoDataUrl
+    ? `<img src="${form.logoDataUrl}" class="fallback-logo" alt="Logo de la firma" />`
+    : `<div class="fallback-logo-text">${escapeHtml(form.nombreFirma)}</div>`;
+
+  return `
+    <table class="fallback-header-table" role="presentation">
+      <tr>
+        <td class="fallback-header-center" colspan="2">
+          ${logo}
+        </td>
+      </tr>
+      <tr>
+        <td class="fallback-header-left">
+          <div><strong>TELÉFONOS:</strong> ${escapeHtml(form.telefonosFirma)}</div>
+          <div><strong>FAX:</strong> ${escapeHtml(form.faxFirma)}</div>
+          <div>${escapeHtml(form.webFirma)}</div>
+          <div>${escapeHtml(form.correoFirma)}</div>
+        </td>
+        <td class="fallback-header-right">
+          ${paragraph(form.direccionFirma)}
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
 function construirDocumentoHtml(form: FormState) {
   const descripcionInvestigacion = construirDescripcionInvestigacion(form);
   const comparecencia = construirComparecencia(form);
@@ -363,6 +393,22 @@ function construirDocumentoHtml(form: FormState) {
   const fecha = form.usarFechaPresentacion
     ? `${form.ciudad || "Panamá"}, a la fecha de su presentación.`
     : `${form.ciudad || "Panamá"}, ${form.fechaTexto || "[FECHA]"}.`;
+
+  const headerCompuesto = form.headerMembreteDataUrl
+    ? `
+      <table class="header-image-table" role="presentation">
+        <tr>
+          <td>
+            <img
+              src="${form.headerMembreteDataUrl}"
+              class="header-image"
+              alt="Membrete de la firma"
+            />
+          </td>
+        </tr>
+      </table>
+    `
+    : construirHeaderFallback(form);
 
   const otorgante =
     form.tipoPoderdante === "persona_juridica"
@@ -373,37 +419,15 @@ function construirDocumentoHtml(form: FormState) {
           form.clienteCedulaPasaporte || "[DOCUMENTO]"
         )}`;
 
-  const logo = form.logoDataUrl
-    ? `<img src="${form.logoDataUrl}" class="logo-firma" alt="Logo de la firma" />`
-    : `<div class="logo-texto">${escapeHtml(form.nombreFirma)}</div>`;
-
   const firma = form.firmaManuscritaDataUrl
     ? `<img src="${form.firmaManuscritaDataUrl}" class="firma-manuscrita" alt="Firma manuscrita" />`
     : "";
 
   return `
     <div class="WordSection1 documento">
-      <table class="logo-table">
-        <tr>
-          <td>${logo}</td>
-        </tr>
-      </table>
+      ${headerCompuesto}
 
-      <table class="membrete-table">
-        <tr>
-          <td class="membrete-left">
-            <div><strong>TELÉFONOS:</strong> ${escapeHtml(form.telefonosFirma)}</div>
-            <div><strong>FAX:</strong> ${escapeHtml(form.faxFirma)}</div>
-            <div>${escapeHtml(form.webFirma)}</div>
-            <div>${escapeHtml(form.correoFirma)}</div>
-          </td>
-          <td class="membrete-right">
-            ${paragraph(form.direccionFirma)}
-          </td>
-        </tr>
-      </table>
-
-      <table class="meta-table">
+      <table class="meta-table" role="presentation">
         <tr>
           <td class="meta-left">
             ${
@@ -428,7 +452,7 @@ function construirDocumentoHtml(form: FormState) {
 
       <p>${paragraph(fecha)}</p>
 
-      <table class="firmas-table">
+      <table class="firmas-table" role="presentation">
         <tr>
           <td class="firma-cell">
             <p>Otorga poder,</p>
@@ -449,8 +473,8 @@ function construirDocumentoHtml(form: FormState) {
       </table>
 
       ${
-        form.sloganFirma
-          ? `<p class="slogan">“${escapeHtml(form.sloganFirma)}”</p>`
+        form.sloganFirma.trim()
+          ? `<div class="footer-slogan">${escapeHtml(form.sloganFirma)}</div>`
           : ""
       }
     </div>
@@ -490,9 +514,9 @@ function estilosDocumento() {
     }
 
     table {
+      width: 100%;
       border-collapse: collapse;
       border-spacing: 0;
-      width: 100%;
     }
 
     td {
@@ -500,24 +524,52 @@ function estilosDocumento() {
       padding: 0;
     }
 
-    .logo-table {
-      margin-bottom: 6pt;
+    .header-image-table {
+      margin-bottom: 18pt;
     }
 
-    .logo-table td {
+    .header-image-table td {
       text-align: center;
     }
 
-    .logo-firma {
-      display: inline-block;
-      width: 230px;
-      max-width: 230px;
+    .header-image {
+      width: 100%;
+      max-width: 520px;
       height: auto;
-      max-height: 82px;
+      display: inline-block;
       object-fit: contain;
     }
 
-    .logo-texto {
+    .fallback-header-table {
+      margin-bottom: 18pt;
+      font-size: 9pt;
+      line-height: 1.08;
+    }
+
+    .fallback-header-center {
+      text-align: center;
+      padding-bottom: 8pt;
+    }
+
+    .fallback-header-left {
+      width: 48%;
+      text-align: left;
+    }
+
+    .fallback-header-right {
+      width: 52%;
+      text-align: right;
+    }
+
+    .fallback-logo {
+      width: 220px;
+      max-width: 220px;
+      height: auto;
+      max-height: 80px;
+      object-fit: contain;
+    }
+
+    .fallback-logo-text {
       font-size: 18pt;
       font-weight: bold;
       letter-spacing: 6px;
@@ -525,36 +577,21 @@ function estilosDocumento() {
       text-transform: uppercase;
     }
 
-    .membrete-table {
-      margin-bottom: 28pt;
-      font-size: 9pt;
-      line-height: 1.08;
-    }
-
-    .membrete-left {
-      width: 48%;
-      text-align: left;
-    }
-
-    .membrete-right {
-      width: 52%;
-      text-align: right;
-    }
-
     .meta-table {
-      margin-bottom: 10pt;
+      margin-bottom: 8pt;
       font-size: 10.5pt;
       line-height: 1.12;
     }
 
     .meta-left {
-      width: 36%;
+      width: 35%;
       text-align: left;
       font-weight: normal;
+      padding-right: 10pt;
     }
 
     .meta-right {
-      width: 64%;
+      width: 65%;
       text-align: right;
       font-weight: bold;
     }
@@ -611,10 +648,11 @@ function estilosDocumento() {
       object-fit: contain;
     }
 
-    .slogan {
+    .footer-slogan {
       margin-top: 28pt;
       text-align: center;
       font-size: 9.5pt;
+      font-style: italic;
       font-weight: bold;
     }
   `;
@@ -660,7 +698,7 @@ export default function EscritosPage() {
 
   const cargarImagen = (
     file: File | undefined,
-    key: "logoDataUrl" | "firmaManuscritaDataUrl"
+    key: "headerMembreteDataUrl" | "logoDataUrl" | "firmaManuscritaDataUrl"
   ) => {
     if (!file) return;
 
@@ -677,7 +715,6 @@ export default function EscritosPage() {
     const temp = document.createElement("div");
     temp.innerHTML = documentoHtml;
     const texto = temp.innerText;
-
     await navigator.clipboard.writeText(texto);
     alert("Texto copiado al portapapeles.");
   };
@@ -773,8 +810,37 @@ export default function EscritosPage() {
 
           <Card
             title="2. Branding de la firma"
-            description="Datos del membrete y aceptación del poder."
+            description="Puede subir una sola imagen horizontal ya compuesta con logo + información completa centrada para usarla como header del documento."
           >
+            <div>
+              <FieldLabel>Imagen compuesta del header (recomendada)</FieldLabel>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) =>
+                  cargarImagen(
+                    event.target.files?.[0],
+                    "headerMembreteDataUrl"
+                  )
+                }
+                className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
+              />
+              <p className="mt-2 text-xs text-slate-400">
+                Recomendado: una imagen horizontal que ya incluya logo,
+                teléfonos, web, correo y dirección centrados.
+              </p>
+
+              {form.headerMembreteDataUrl && (
+                <div className="mt-3 rounded-xl bg-white p-3">
+                  <img
+                    src={form.headerMembreteDataUrl}
+                    alt="Header compuesto"
+                    className="mx-auto max-h-32 object-contain"
+                  />
+                </div>
+              )}
+            </div>
+
             <div>
               <FieldLabel>Nombre de la firma</FieldLabel>
               <TextInput
@@ -784,7 +850,7 @@ export default function EscritosPage() {
             </div>
 
             <div>
-              <FieldLabel>Slogan</FieldLabel>
+              <FieldLabel>Slogan (saldrá en el footer del documento)</FieldLabel>
               <TextInput
                 value={form.sloganFirma}
                 onChange={(value) => update("sloganFirma", value)}
@@ -833,7 +899,7 @@ export default function EscritosPage() {
             </div>
 
             <div>
-              <FieldLabel>Logo de la firma</FieldLabel>
+              <FieldLabel>Logo individual (fallback)</FieldLabel>
               <input
                 type="file"
                 accept="image/*"
@@ -847,7 +913,7 @@ export default function EscritosPage() {
                 <div className="mt-3 rounded-xl bg-white p-3">
                   <img
                     src={form.logoDataUrl}
-                    alt="Logo de la firma"
+                    alt="Logo individual"
                     className="mx-auto max-h-24 object-contain"
                   />
                 </div>
@@ -1022,7 +1088,6 @@ export default function EscritosPage() {
                 value={form.clienteDomicilio}
                 onChange={(value) => update("clienteDomicilio", value)}
                 rows={3}
-                placeholder="Urbanización, calle, edificio, apartamento/oficina, corregimiento, distrito y provincia"
               />
             </div>
 
@@ -1084,14 +1149,13 @@ export default function EscritosPage() {
 
           <Card
             title="6. Carpetilla e investigación"
-            description="Aparece debajo del membrete: carpetilla izquierda, descripción derecha."
+            description="Carpetilla a la izquierda y descripción del proceso a la derecha."
           >
             <div>
               <FieldLabel>Número de carpetilla</FieldLabel>
               <TextInput
                 value={form.numeroCarpetilla}
                 onChange={(value) => update("numeroCarpetilla", value)}
-                placeholder="Ejemplo: 201900065074"
               />
             </div>
 
@@ -1102,8 +1166,7 @@ export default function EscritosPage() {
                 onChange={(value) =>
                   update("descripcionInvestigacion", value)
                 }
-                rows={5}
-                placeholder="Ejemplo: Querella en contra de Juan Bravo por la supuesta comisión de un delito contra la fe pública en perjuicio de Rodrigo Fonseca."
+                rows={4}
               />
             </div>
 
@@ -1112,7 +1175,6 @@ export default function EscritosPage() {
               <TextInput
                 value={form.tipoProceso}
                 onChange={(value) => update("tipoProceso", value)}
-                placeholder="Querella / Investigación seguida"
               />
             </div>
 
@@ -1130,7 +1192,6 @@ export default function EscritosPage() {
                 value={form.delitoOMateria}
                 onChange={(value) => update("delitoOMateria", value)}
                 rows={3}
-                placeholder="Ejemplo: la fe pública, el patrimonio económico, el honor de la persona natural..."
               />
             </div>
 
@@ -1218,7 +1279,6 @@ export default function EscritosPage() {
                 value={form.facultadesAdicionales}
                 onChange={(value) => update("facultadesAdicionales", value)}
                 rows={3}
-                placeholder="Ejemplo: retirar copias, solicitar autenticaciones, gestionar notificaciones..."
               />
             </div>
 
@@ -1274,7 +1334,7 @@ export default function EscritosPage() {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <Card
             title="Vista previa"
-            description="Vista previa en tamaño LEGAL / oficio. Puede copiar, imprimir o descargar en Word."
+            description="Si subes una imagen compuesta del membrete, esa será la que se use en el header del documento."
           >
             <div className="overflow-auto rounded-xl bg-white p-4 text-slate-950">
               <div
