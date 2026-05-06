@@ -105,7 +105,7 @@ const initialForm: FormState = {
   autoridadDestino:
     "SEÑOR(A) FISCAL DE ATENCIÓN PRIMARIA DE LA FISCALÍA METROPOLITANA:",
   descripcionInvestigacion: "",
-  tipoProceso: "Investigación seguida",
+  tipoProceso: "Querella",
   contraparte: "",
   delitoOMateria: "",
   perjudicado: "",
@@ -246,7 +246,7 @@ function construirDescripcionInvestigacion(form: FormState) {
     form.sociedadNombre.trim() ||
     "__________";
 
-  return `${tipo} a ${contraparte} por la comisión de un delito contra ${delito} en perjuicio de ${perjudicado}.`;
+  return `${tipo} en contra de ${contraparte} por la supuesta comisión de un delito contra ${delito} en perjuicio de ${perjudicado}.`;
 }
 
 function construirComparecencia(form: FormState) {
@@ -584,16 +584,17 @@ function estilosDocumento() {
     }
 
     .meta-left {
-      width: 35%;
+      width: 42%;
       text-align: left;
       font-weight: normal;
-      padding-right: 10pt;
+      padding-right: 8pt;
     }
 
     .meta-right {
-      width: 65%;
-      text-align: right;
+      width: 58%;
+      text-align: center;
       font-weight: bold;
+      padding-left: 18pt;
     }
 
     h1 {
@@ -813,7 +814,7 @@ export default function EscritosPage() {
             description="Puede subir una sola imagen horizontal ya compuesta con logo + información completa centrada para usarla como header del documento."
           >
             <div>
-              <FieldLabel>Imagen compuesta del header (recomendada)</FieldLabel>
+              <FieldLabel>Imagen compuesta del header</FieldLabel>
               <input
                 type="file"
                 accept="image/*"
@@ -825,10 +826,6 @@ export default function EscritosPage() {
                 }
                 className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
               />
-              <p className="mt-2 text-xs text-slate-400">
-                Recomendado: una imagen horizontal que ya incluya logo,
-                teléfonos, web, correo y dirección centrados.
-              </p>
 
               {form.headerMembreteDataUrl && (
                 <div className="mt-3 rounded-xl bg-white p-3">
@@ -850,7 +847,7 @@ export default function EscritosPage() {
             </div>
 
             <div>
-              <FieldLabel>Slogan (saldrá en el footer del documento)</FieldLabel>
+              <FieldLabel>Slogan</FieldLabel>
               <TextInput
                 value={form.sloganFirma}
                 onChange={(value) => update("sloganFirma", value)}
@@ -899,7 +896,7 @@ export default function EscritosPage() {
             </div>
 
             <div>
-              <FieldLabel>Logo individual (fallback)</FieldLabel>
+              <FieldLabel>Logo individual fallback</FieldLabel>
               <input
                 type="file"
                 accept="image/*"
@@ -908,16 +905,6 @@ export default function EscritosPage() {
                 }
                 className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
               />
-
-              {form.logoDataUrl && (
-                <div className="mt-3 rounded-xl bg-white p-3">
-                  <img
-                    src={form.logoDataUrl}
-                    alt="Logo individual"
-                    className="mx-auto max-h-24 object-contain"
-                  />
-                </div>
-              )}
             </div>
           </Card>
 
@@ -1008,16 +995,6 @@ export default function EscritosPage() {
                 }
                 className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
               />
-
-              {form.firmaManuscritaDataUrl && (
-                <div className="mt-3 rounded-xl bg-white p-3">
-                  <img
-                    src={form.firmaManuscritaDataUrl}
-                    alt="Firma manuscrita"
-                    className="mx-auto max-h-20 object-contain"
-                  />
-                </div>
-              )}
             </div>
           </Card>
 
@@ -1049,7 +1026,6 @@ export default function EscritosPage() {
               <TextInput
                 value={form.clienteNombre}
                 onChange={(value) => update("clienteNombre", value)}
-                placeholder="Ejemplo: Juan Pérez Castillo"
               />
             </div>
 
@@ -1308,7 +1284,6 @@ export default function EscritosPage() {
                 <TextInput
                   value={form.fechaTexto}
                   onChange={(value) => update("fechaTexto", value)}
-                  placeholder="Ejemplo: 5 de junio de 2026"
                 />
               </div>
             )}
@@ -1334,7 +1309,7 @@ export default function EscritosPage() {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <Card
             title="Vista previa"
-            description="Si subes una imagen compuesta del membrete, esa será la que se use en el header del documento."
+            description="Vista previa en tamaño LEGAL / oficio. Puede copiar, imprimir o descargar en Word."
           >
             <div className="overflow-auto rounded-xl bg-white p-4 text-slate-950">
               <div
