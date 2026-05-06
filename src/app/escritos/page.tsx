@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 type TipoPoderdante = "persona_natural" | "persona_juridica";
 
 type FormState = {
-  // Branding firma
   nombreFirma: string;
   sloganFirma: string;
   telefonosFirma: string;
@@ -17,7 +17,6 @@ type FormState = {
   logoDataUrl: string;
   firmaManuscritaDataUrl: string;
 
-  // Abogado / firma receptora del poder
   abogadoNombre: string;
   abogadoGenero: "mujer" | "varon";
   abogadoNacionalidad: string;
@@ -28,23 +27,20 @@ type FormState = {
   abogadoCorreos: string;
   abogadoRecibeNotificaciones: string;
 
-  // Cliente / poderdante
   tipoPoderdante: TipoPoderdante;
   clienteNombre: string;
-  clienteGenero: "varon" | "mujer" | "sociedad";
+  clienteGenero: "varon" | "mujer";
   clienteNacionalidad: string;
   clienteCedulaPasaporte: string;
   clienteDomicilio: string;
   clienteTelefono: string;
   clienteCorreos: string;
 
-  // Persona jurídica
   sociedadNombre: string;
   sociedadTipo: string;
   sociedadFolio: string;
   representanteCargo: string;
 
-  // Proceso / destino
   autoridadDestino: string;
   asunto: string;
   tipoProceso: string;
@@ -52,7 +48,6 @@ type FormState = {
   delitoOMateria: string;
   finalidadPoder: string;
 
-  // Documento
   ciudad: string;
   fechaTexto: string;
   usarFechaPresentacion: boolean;
@@ -70,7 +65,8 @@ const initialForm: FormState = {
   webFirma: "www.rachlaw.com",
   correoFirma: "info@rachlaw.com",
   direccionFirma:
-    "Calle 54 Este, Urbanización Obarrio, Edificio PH Twist Tower (Global Hotel), Piso 30, Oficina 30-D, Panamá, República de Panamá",
+    "APARTADO 0831-00674, ZONA PAITILLA\nPANAMÁ, REP. DE PANAMÁ\nCALLE 54 OBARRIO (diagonal a Generali)\nEDIFICIO TWIST TOWER 54 (Global Hotel)\nPISO 30, OFICINAS 30-D",
+
   logoDataUrl: "",
   firmaManuscritaDataUrl: "",
 
@@ -118,7 +114,7 @@ const initialForm: FormState = {
   facultadesAdicionales: "",
 };
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
+function FieldLabel({ children }: { children: ReactNode }) {
   return (
     <label className="mb-1 block text-sm font-medium text-slate-300">
       {children}
@@ -177,7 +173,7 @@ function SelectInput({
 }: {
   value: string;
   onChange: (value: string) => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <select
@@ -197,7 +193,7 @@ function Card({
 }: {
   title: string;
   description?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-slate-950/60 shadow-xl shadow-black/20">
@@ -225,24 +221,91 @@ function paragraph(value: string) {
   return escapeHtml(value).replaceAll("\n", "<br />");
 }
 
-function nombreConTitulo(nombre: string) {
-  if (!nombre.trim()) return "";
+function nombreMayuscula(nombre: string) {
   return nombre.trim().toUpperCase();
 }
 
 function construirComparecencia(form: FormState) {
-  const genero =
-    form.clienteGenero === "mujer"
-      ? "mujer"
-      : form.clienteGenero === "sociedad"
-      ? ""
-      : "varón";
+  const generoCliente = form.clienteGenero === "mujer" ? "mujer" : "varón";
+  const generoAbogado = form.abogadoGenero === "mujer" ? "mujer" : "varón";
 
   if (form.tipoPoderdante === "persona_juridica") {
-    return `Quien suscribe, ${form.clienteNombre || "[NOMBRE DEL REPRESENTANTE]"}, ${genero}, ${form.clienteNacionalidad || "[NACIONALIDAD]"}, mayor de edad, con documento de identidad personal No. ${form.clienteCedulaPasaporte || "[CÉDULA/PASAPORTE]"}, con domicilio en ${form.clienteDomicilio || "[DOMICILIO COMPLETO]"}, teléfono ${form.clienteTelefono || "[TELÉFONO]"} y correo electrónico ${form.clienteCorreos || "[CORREO ELECTRÓNICO]"}, actuando en mi condición de ${form.representanteCargo || "[CARGO]"} de la sociedad ${form.sociedadNombre || "[NOMBRE DE LA SOCIEDAD]"}, ${form.sociedadTipo || "sociedad"}, inscrita a Folio Mercantil No. ${form.sociedadFolio || "[FOLIO]"}, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial, amplio y suficiente, a la firma ${form.nombreFirma || "[NOMBRE DE LA FIRMA]"}, representada en este acto por la Lcda. ${form.abogadoNombre || "[NOMBRE DEL ABOGADO]"}, ${form.abogadoGenero === "mujer" ? "mujer" : "varón"}, ${form.abogadoNacionalidad || "[NACIONALIDAD]"}, mayor de edad, con cédula de identidad personal No. ${form.abogadoCedula || "[CÉDULA]"}, ${form.abogadoCargo || "abogada en ejercicio"}, con oficinas en ${form.abogadoOficinas || "[DIRECCIÓN DE OFICINA]"}, con teléfonos No. ${form.abogadoTelefonos || "[TELÉFONOS]"} y correos electrónicos ${form.abogadoCorreos || "[CORREOS]"}, ${form.abogadoRecibeNotificaciones || "lugar donde recibe notificaciones personales"}, con el fin de ${form.finalidadPoder || "[FINALIDAD DEL PODER]"}.`;
+    return `Quien suscribe, ${
+      form.clienteNombre || "[NOMBRE DEL REPRESENTANTE]"
+    }, ${generoCliente}, ${
+      form.clienteNacionalidad || "[NACIONALIDAD]"
+    }, mayor de edad, con documento de identidad personal No. ${
+      form.clienteCedulaPasaporte || "[CÉDULA/PASAPORTE]"
+    }, con domicilio en ${
+      form.clienteDomicilio || "[DOMICILIO COMPLETO]"
+    }, teléfono ${
+      form.clienteTelefono || "[TELÉFONO]"
+    } y correo electrónico ${
+      form.clienteCorreos || "[CORREO ELECTRÓNICO]"
+    }, actuando en mi condición de ${
+      form.representanteCargo || "[CARGO]"
+    } de la sociedad ${
+      form.sociedadNombre || "[NOMBRE DE LA SOCIEDAD]"
+    }, ${
+      form.sociedadTipo || "sociedad"
+    }, inscrita a Folio Mercantil No. ${
+      form.sociedadFolio || "[FOLIO]"
+    }, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial, amplio y suficiente, a la firma ${
+      form.nombreFirma || "[NOMBRE DE LA FIRMA]"
+    }, representada en este acto por la Lcda. ${
+      form.abogadoNombre || "[NOMBRE DEL ABOGADO]"
+    }, ${generoAbogado}, ${
+      form.abogadoNacionalidad || "[NACIONALIDAD]"
+    }, mayor de edad, con cédula de identidad personal No. ${
+      form.abogadoCedula || "[CÉDULA]"
+    }, ${
+      form.abogadoCargo || "abogada en ejercicio"
+    }, con oficinas en ${
+      form.abogadoOficinas || "[DIRECCIÓN DE OFICINA]"
+    }, con teléfonos No. ${
+      form.abogadoTelefonos || "[TELÉFONOS]"
+    } y correos electrónicos ${
+      form.abogadoCorreos || "[CORREOS]"
+    }, ${
+      form.abogadoRecibeNotificaciones ||
+      "lugar donde recibe notificaciones personales"
+    }, con el fin de ${
+      form.finalidadPoder || "[FINALIDAD DEL PODER]"
+    }.`;
   }
 
-  return `Quien suscribe, ${form.clienteNombre || "[NOMBRE DEL CLIENTE]"}, ${genero}, ${form.clienteNacionalidad || "[NACIONALIDAD]"}, mayor de edad, con documento de identidad personal No. ${form.clienteCedulaPasaporte || "[CÉDULA/PASAPORTE]"}, con domicilio en ${form.clienteDomicilio || "[DOMICILIO COMPLETO]"}, teléfono ${form.clienteTelefono || "[TELÉFONO]"} y correo electrónico ${form.clienteCorreos || "[CORREO ELECTRÓNICO]"}, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial, amplio y suficiente, a la firma ${form.nombreFirma || "[NOMBRE DE LA FIRMA]"}, representada en este acto por la Lcda. ${form.abogadoNombre || "[NOMBRE DEL ABOGADO]"}, ${form.abogadoGenero === "mujer" ? "mujer" : "varón"}, ${form.abogadoNacionalidad || "[NACIONALIDAD]"}, mayor de edad, con cédula de identidad personal No. ${form.abogadoCedula || "[CÉDULA]"}, ${form.abogadoCargo || "abogada en ejercicio"}, con oficinas en ${form.abogadoOficinas || "[DIRECCIÓN DE OFICINA]"}, con teléfonos No. ${form.abogadoTelefonos || "[TELÉFONOS]"} y correos electrónicos ${form.abogadoCorreos || "[CORREOS]"}, ${form.abogadoRecibeNotificaciones || "lugar donde recibe notificaciones personales"}, con el fin de ${form.finalidadPoder || "[FINALIDAD DEL PODER]"}.`;
+  return `Quien suscribe, ${
+    form.clienteNombre || "[NOMBRE DEL CLIENTE]"
+  }, ${generoCliente}, ${
+    form.clienteNacionalidad || "[NACIONALIDAD]"
+  }, mayor de edad, con documento de identidad personal No. ${
+    form.clienteCedulaPasaporte || "[CÉDULA/PASAPORTE]"
+  }, con domicilio en ${
+    form.clienteDomicilio || "[DOMICILIO COMPLETO]"
+  }, teléfono ${
+    form.clienteTelefono || "[TELÉFONO]"
+  } y correo electrónico ${
+    form.clienteCorreos || "[CORREO ELECTRÓNICO]"
+  }, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial, amplio y suficiente, a la firma ${
+    form.nombreFirma || "[NOMBRE DE LA FIRMA]"
+  }, representada en este acto por la Lcda. ${
+    form.abogadoNombre || "[NOMBRE DEL ABOGADO]"
+  }, ${generoAbogado}, ${
+    form.abogadoNacionalidad || "[NACIONALIDAD]"
+  }, mayor de edad, con cédula de identidad personal No. ${
+    form.abogadoCedula || "[CÉDULA]"
+  }, ${
+    form.abogadoCargo || "abogada en ejercicio"
+  }, con oficinas en ${
+    form.abogadoOficinas || "[DIRECCIÓN DE OFICINA]"
+  }, con teléfonos No. ${
+    form.abogadoTelefonos || "[TELÉFONOS]"
+  } y correos electrónicos ${
+    form.abogadoCorreos || "[CORREOS]"
+  }, ${
+    form.abogadoRecibeNotificaciones ||
+    "lugar donde recibe notificaciones personales"
+  }, con el fin de ${form.finalidadPoder || "[FINALIDAD DEL PODER]"}.`;
 }
 
 function construirFacultades(form: FormState) {
@@ -264,7 +327,11 @@ function construirFacultades(form: FormState) {
     );
   }
 
-  const textoBase = `La firma ${form.nombreFirma || "[NOMBRE DE LA FIRMA]"} queda expresamente facultada para ${facultades.join(", ")} y realizar todas las actuaciones necesarias para el ejercicio del presente poder.`;
+  const textoBase = `La firma ${
+    form.nombreFirma || "[NOMBRE DE LA FIRMA]"
+  } queda expresamente facultada para ${facultades.join(
+    ", "
+  )} y realizar todas las actuaciones necesarias para el ejercicio del presente poder.`;
 
   if (!form.facultadesAdicionales.trim()) {
     return textoBase;
@@ -313,29 +380,41 @@ function construirDocumentoHtml(form: FormState) {
 
   const otorgante =
     form.tipoPoderdante === "persona_juridica"
-      ? `${form.sociedadNombre || "[SOCIEDAD]"}<br />${form.clienteNombre || "[REPRESENTANTE LEGAL]"}<br />${form.clienteCedulaPasaporte || "[DOCUMENTO]"}`
-      : `${form.clienteNombre || "[NOMBRE DEL CLIENTE]"}<br />${form.clienteCedulaPasaporte || "[DOCUMENTO]"}`;
+      ? `${form.sociedadNombre || "[SOCIEDAD]"}<br />${
+          form.clienteNombre || "[REPRESENTANTE LEGAL]"
+        }<br />${form.clienteCedulaPasaporte || "[DOCUMENTO]"}`
+      : `${form.clienteNombre || "[NOMBRE DEL CLIENTE]"}<br />${
+          form.clienteCedulaPasaporte || "[DOCUMENTO]"
+        }`;
 
   const logo = form.logoDataUrl
-    ? `<img src="${form.logoDataUrl}" style="max-width:220px; max-height:90px; object-fit:contain;" />`
-    : "";
+    ? `<img src="${form.logoDataUrl}" class="logo-firma" alt="Logo de la firma" />`
+    : `<div class="logo-texto">${escapeHtml(form.nombreFirma)}</div>`;
 
   const firma = form.firmaManuscritaDataUrl
-    ? `<img src="${form.firmaManuscritaDataUrl}" style="max-width:180px; max-height:75px; object-fit:contain; margin-bottom:4px;" />`
+    ? `<img src="${form.firmaManuscritaDataUrl}" class="firma-manuscrita" alt="Firma manuscrita" />`
     : "";
 
   return `
     <div class="documento">
       <header class="letterhead">
-        <div class="letterhead-left">
+        <div class="logo-center">
           ${logo}
-          <div><strong>TELÉFONOS:</strong> ${escapeHtml(form.telefonosFirma)}</div>
-          <div><strong>FAX:</strong> ${escapeHtml(form.faxFirma)}</div>
-          <div>${escapeHtml(form.webFirma)}</div>
-          <div>${escapeHtml(form.correoFirma)}</div>
         </div>
-        <div class="letterhead-right">
-          ${paragraph(form.direccionFirma)}
+
+        <div class="membrete-grid">
+          <div class="membrete-left">
+            <div><strong>TELÉFONOS:</strong> ${escapeHtml(
+              form.telefonosFirma
+            )}</div>
+            <div><strong>FAX:</strong> ${escapeHtml(form.faxFirma)}</div>
+            <div>${escapeHtml(form.webFirma)}</div>
+            <div>${escapeHtml(form.correoFirma)}</div>
+          </div>
+
+          <div class="membrete-right">
+            ${paragraph(form.direccionFirma)}
+          </div>
         </div>
       </header>
 
@@ -364,7 +443,9 @@ function construirDocumentoHtml(form: FormState) {
             <p><strong>${escapeHtml(form.nombreFirma)}</strong></p>
             ${firma}
             <div class="linea"></div>
-            <p>Lcda. ${escapeHtml(nombreConTitulo(form.abogadoNombre) || "[NOMBRE DEL ABOGADO]")}</p>
+            <p>Lcda. ${escapeHtml(
+              nombreMayuscula(form.abogadoNombre) || "[NOMBRE DEL ABOGADO]"
+            )}</p>
           </div>
         </div>
       </main>
@@ -389,8 +470,8 @@ function construirDocumentoCompleto(form: FormState) {
         <title>Poder Especial</title>
         <style>
           @page {
-            size: letter;
-            margin: 1in;
+            size: legal;
+            margin: 0.85in 0.85in 0.85in 0.85in;
           }
 
           body {
@@ -399,30 +480,55 @@ function construirDocumentoCompleto(form: FormState) {
             color: #111827;
             font-family: "Times New Roman", Times, serif;
             font-size: 12pt;
-            line-height: 1.45;
+            line-height: 1.42;
           }
 
           .documento {
-            max-width: 8.5in;
+            width: 8.5in;
+            min-height: 14in;
             margin: 0 auto;
             background: #ffffff;
           }
 
           .letterhead {
-            display: flex;
-            justify-content: space-between;
-            gap: 28px;
-            margin-bottom: 42px;
+            margin-bottom: 34px;
             font-size: 9pt;
             line-height: 1.25;
           }
 
-          .letterhead-left,
-          .letterhead-right {
-            width: 50%;
+          .logo-center {
+            text-align: center;
+            margin-bottom: 12px;
           }
 
-          .letterhead-right {
+          .logo-firma {
+            display: inline-block;
+            max-width: 390px;
+            max-height: 115px;
+            object-fit: contain;
+          }
+
+          .logo-texto {
+            display: inline-block;
+            font-size: 20pt;
+            font-weight: bold;
+            letter-spacing: 7px;
+            color: #111827;
+            text-transform: uppercase;
+          }
+
+          .membrete-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 26px;
+            width: 100%;
+          }
+
+          .membrete-left {
+            text-align: left;
+          }
+
+          .membrete-right {
             text-align: right;
           }
 
@@ -466,6 +572,14 @@ function construirDocumentoCompleto(form: FormState) {
             margin-bottom: 8px;
           }
 
+          .firma-manuscrita {
+            display: block;
+            max-width: 180px;
+            max-height: 75px;
+            object-fit: contain;
+            margin: 4px auto 0 auto;
+          }
+
           .linea {
             border-top: 1px solid #111827;
             height: 1px;
@@ -506,7 +620,7 @@ export default function EscritosPage() {
     const reader = new FileReader();
 
     reader.onload = () => {
-      update(key, String(reader.result || ""));
+      update(key, String(reader.result || "") as FormState[typeof key]);
     };
 
     reader.readAsDataURL(file);
@@ -516,6 +630,7 @@ export default function EscritosPage() {
     const temp = document.createElement("div");
     temp.innerHTML = documentoHtml;
     const texto = temp.innerText;
+
     await navigator.clipboard.writeText(texto);
     alert("Texto copiado al portapapeles.");
   };
@@ -582,6 +697,7 @@ export default function EscritosPage() {
             >
               Copiar
             </button>
+
             <button
               onClick={descargarWord}
               className="rounded-xl bg-yellow-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-yellow-300"
@@ -663,7 +779,7 @@ export default function EscritosPage() {
               <TextArea
                 value={form.direccionFirma}
                 onChange={(value) => update("direccionFirma", value)}
-                rows={3}
+                rows={5}
               />
             </div>
 
@@ -677,12 +793,13 @@ export default function EscritosPage() {
                 }
                 className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
               />
+
               {form.logoDataUrl && (
                 <div className="mt-3 rounded-xl bg-white p-3">
                   <img
                     src={form.logoDataUrl}
                     alt="Logo de la firma"
-                    className="max-h-20 object-contain"
+                    className="mx-auto max-h-24 object-contain"
                   />
                 </div>
               )}
@@ -776,12 +893,13 @@ export default function EscritosPage() {
                 }
                 className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
               />
+
               {form.firmaManuscritaDataUrl && (
                 <div className="mt-3 rounded-xl bg-white p-3">
                   <img
                     src={form.firmaManuscritaDataUrl}
                     alt="Firma manuscrita"
-                    className="max-h-20 object-contain"
+                    className="mx-auto max-h-20 object-contain"
                   />
                 </div>
               )}
@@ -825,10 +943,7 @@ export default function EscritosPage() {
               <SelectInput
                 value={form.clienteGenero}
                 onChange={(value) =>
-                  update(
-                    "clienteGenero",
-                    value as "varon" | "mujer" | "sociedad"
-                  )
+                  update("clienteGenero", value as "varon" | "mujer")
                 }
               >
                 <option value="varon">Varón</option>
@@ -1085,11 +1200,11 @@ export default function EscritosPage() {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <Card
             title="Vista previa"
-            description="Así se generará el poder especial. Puede copiarlo, imprimirlo o descargarlo en formato Word."
+            description="Vista previa en tamaño LEGAL / oficio. Puede copiar, imprimir o descargar en Word."
           >
-            <div className="rounded-xl bg-white p-4 text-slate-950">
+            <div className="overflow-auto rounded-xl bg-white p-4 text-slate-950">
               <div
-                className="mx-auto min-h-[900px] max-w-[816px] bg-white p-8 text-[12pt] leading-relaxed shadow-2xl"
+                className="mx-auto min-h-[1344px] max-w-[816px] bg-white p-8 text-[12pt] leading-relaxed shadow-2xl"
                 style={{ fontFamily: "Times New Roman, Times, serif" }}
                 dangerouslySetInnerHTML={{ __html: documentoHtml }}
               />
