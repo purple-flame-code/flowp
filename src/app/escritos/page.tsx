@@ -61,7 +61,7 @@ type FormState = {
 
 const initialForm: FormState = {
   nombreFirma: "RAMOS CHUE & ASOCIADOS",
-  sloganFirma: "CALIDAD Y SEGUIMIENTO",
+  sloganFirma: "Calidad y Seguimiento",
   telefonosFirma: "(507) 201-5532/33",
   faxFirma: "(507) 201-5534",
   webFirma: "www.rachlaw.com",
@@ -102,7 +102,7 @@ const initialForm: FormState = {
   autoridadDestino:
     "SEÑOR(A) FISCAL DE ATENCIÓN PRIMARIA DE LA FISCALÍA METROPOLITANA:",
   descripcionInvestigacion: "",
-  tipoProceso: "Investigación seguida",
+  tipoProceso: "Querella",
   contraparte: "",
   delitoOMateria: "",
   perjudicado: "",
@@ -234,6 +234,7 @@ function construirDescripcionInvestigacion(form: FormState) {
     return form.descripcionInvestigacion.trim();
   }
 
+  const tipo = form.tipoProceso.trim() || "Investigación seguida";
   const contraparte = form.contraparte.trim() || "__________";
   const delito = form.delitoOMateria.trim() || "__________";
   const perjudicado =
@@ -242,7 +243,7 @@ function construirDescripcionInvestigacion(form: FormState) {
     form.sociedadNombre.trim() ||
     "__________";
 
-  return `${form.tipoProceso || "Investigación seguida"} a ${contraparte} por la comisión de un delito contra ${delito} en perjuicio de ${perjudicado}.`;
+  return `${tipo} en contra de ${contraparte} por la supuesta comisión de un delito contra ${delito} en perjuicio de ${perjudicado}.`;
 }
 
 function construirComparecencia(form: FormState) {
@@ -271,7 +272,7 @@ function construirComparecencia(form: FormState) {
       form.sociedadTipo || "sociedad"
     }, inscrita a Folio Mercantil No. ${
       form.sociedadFolio || "[FOLIO]"
-    }, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial, amplio y suficiente, a la firma ${
+    }, comparezco respetuosamente ante su despacho con el propósito de conferir Poder Especial amplio y suficiente a la firma ${
       form.nombreFirma || "[NOMBRE DE LA FIRMA]"
     }, representada en este acto por la Lcda. ${
       form.abogadoNombre || "[NOMBRE DEL ABOGADO]"
@@ -290,7 +291,7 @@ function construirComparecencia(form: FormState) {
     }, ${
       form.abogadoRecibeNotificaciones ||
       "lugar donde recibe notificaciones personales"
-    }, con el fin de que asuman mi representación dentro de ${descripcion}`;
+    }, con el propósito de ${form.finalidadPoder || `que asuman mi representación dentro de ${descripcion}`}.`;
   }
 
   return `Quien suscribe, ${
@@ -339,11 +340,7 @@ function construirFacultades(form: FormState) {
   }
 
   if (form.incluirFacultadesRecursos) {
-    facultades.push(
-      "interponer recursos",
-      "presentar solicitudes",
-      "promover acciones legales"
-    );
+    facultades.push("interponer recursos", "presentar solicitudes");
   }
 
   const textoBase = `La firma ${
@@ -369,12 +366,12 @@ function construirDocumentoHtml(form: FormState) {
 
   const otorgante =
     form.tipoPoderdante === "persona_juridica"
-      ? `${form.sociedadNombre || "[SOCIEDAD]"}<br />${
+      ? `${escapeHtml(form.sociedadNombre || "[SOCIEDAD]")}<br />${escapeHtml(
           form.clienteNombre || "[REPRESENTANTE LEGAL]"
-        }<br />${form.clienteCedulaPasaporte || "[DOCUMENTO]"}`
-      : `${form.clienteNombre || "[NOMBRE DEL CLIENTE]"}<br />${
+        )}<br />${escapeHtml(form.clienteCedulaPasaporte || "[DOCUMENTO]")}`
+      : `${escapeHtml(form.clienteNombre || "[NOMBRE DEL CLIENTE]")}<br />${escapeHtml(
           form.clienteCedulaPasaporte || "[DOCUMENTO]"
-        }`;
+        )}`;
 
   const logo = form.logoDataUrl
     ? `<img src="${form.logoDataUrl}" class="logo-firma" alt="Logo de la firma" />`
@@ -385,78 +382,241 @@ function construirDocumentoHtml(form: FormState) {
     : "";
 
   return `
-    <div class="documento">
-      <header class="letterhead">
-        <div class="logo-center">
-          ${logo}
-        </div>
+    <div class="WordSection1 documento">
+      <table class="logo-table">
+        <tr>
+          <td>${logo}</td>
+        </tr>
+      </table>
 
-        <div class="membrete-grid">
-          <div class="membrete-left">
-            <div><strong>TELÉFONOS:</strong> ${escapeHtml(
-              form.telefonosFirma
-            )}</div>
+      <table class="membrete-table">
+        <tr>
+          <td class="membrete-left">
+            <div><strong>TELÉFONOS:</strong> ${escapeHtml(form.telefonosFirma)}</div>
             <div><strong>FAX:</strong> ${escapeHtml(form.faxFirma)}</div>
             <div>${escapeHtml(form.webFirma)}</div>
             <div>${escapeHtml(form.correoFirma)}</div>
-          </div>
-
-          <div class="membrete-right">
+          </td>
+          <td class="membrete-right">
             ${paragraph(form.direccionFirma)}
-          </div>
-        </div>
-      </header>
+          </td>
+        </tr>
+      </table>
 
-      <section class="datos-superiores">
-        <div class="carpetilla">
-          ${
-            form.numeroCarpetilla.trim()
-              ? `Carpetilla #${escapeHtml(form.numeroCarpetilla)}`
-              : "&nbsp;"
-          }
-        </div>
+      <table class="meta-table">
+        <tr>
+          <td class="meta-left">
+            ${
+              form.numeroCarpetilla.trim()
+                ? `Carpetilla #${escapeHtml(form.numeroCarpetilla)}`
+                : "&nbsp;"
+            }
+          </td>
+          <td class="meta-right">
+            ${paragraph(descripcionInvestigacion)}
+          </td>
+        </tr>
+      </table>
 
-        <div class="descripcion-investigacion">
-          ${paragraph(descripcionInvestigacion)}
-        </div>
-      </section>
+      <h1>Poder Especial</h1>
 
-      <main>
-        <h1>Poder Especial</h1>
+      <p class="autoridad">${paragraph(form.autoridadDestino)}</p>
 
-        <p class="autoridad">${paragraph(form.autoridadDestino)}</p>
+      <p>${paragraph(comparecencia)}</p>
 
-        <p>${paragraph(comparecencia)}</p>
+      <p>${paragraph(facultades)}</p>
 
-        <p>${paragraph(facultades)}</p>
+      <p>${paragraph(fecha)}</p>
 
-        <p>${paragraph(fecha)}</p>
-
-        <div class="firmas">
-          <div class="firma-bloque">
+      <table class="firmas-table">
+        <tr>
+          <td class="firma-cell">
             <p>Otorga poder,</p>
-            <div class="linea"></div>
+            <div class="firma-espacio"></div>
             <p>${otorgante}</p>
-          </div>
+          </td>
 
-          <div class="firma-bloque">
+          <td class="firma-cell">
             <p>Acepta poder,</p>
             <p><strong>${escapeHtml(form.nombreFirma)}</strong></p>
             ${firma}
-            <div class="linea"></div>
+            <div class="firma-espacio"></div>
             <p>Lcda. ${escapeHtml(
               nombreMayuscula(form.abogadoNombre) || "[NOMBRE DEL ABOGADO]"
             )}</p>
-          </div>
-        </div>
-      </main>
+          </td>
+        </tr>
+      </table>
 
       ${
         form.sloganFirma
-          ? `<footer>“${escapeHtml(form.sloganFirma)}”</footer>`
+          ? `<p class="slogan">“${escapeHtml(form.sloganFirma)}”</p>`
           : ""
       }
     </div>
+  `;
+}
+
+function estilosDocumento() {
+  return `
+    @page WordSection1 {
+      size: 8.5in 14in;
+      margin: 0.65in 0.75in 0.75in 0.75in;
+      mso-page-orientation: portrait;
+    }
+
+    div.WordSection1 {
+      page: WordSection1;
+    }
+
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: #000000;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 11pt;
+      line-height: 1.18;
+    }
+
+    .documento {
+      width: 7in;
+      min-height: 12.6in;
+      margin: 0 auto;
+      background: #ffffff;
+      color: #000000;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 11pt;
+      line-height: 1.18;
+    }
+
+    table {
+      border-collapse: collapse;
+      border-spacing: 0;
+      width: 100%;
+    }
+
+    td {
+      vertical-align: top;
+      padding: 0;
+    }
+
+    .logo-table {
+      margin-bottom: 6pt;
+    }
+
+    .logo-table td {
+      text-align: center;
+    }
+
+    .logo-firma {
+      display: inline-block;
+      width: 230px;
+      max-width: 230px;
+      height: auto;
+      max-height: 82px;
+      object-fit: contain;
+    }
+
+    .logo-texto {
+      font-size: 18pt;
+      font-weight: bold;
+      letter-spacing: 6px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .membrete-table {
+      margin-bottom: 28pt;
+      font-size: 9pt;
+      line-height: 1.08;
+    }
+
+    .membrete-left {
+      width: 48%;
+      text-align: left;
+    }
+
+    .membrete-right {
+      width: 52%;
+      text-align: right;
+    }
+
+    .meta-table {
+      margin-bottom: 10pt;
+      font-size: 10.5pt;
+      line-height: 1.12;
+    }
+
+    .meta-left {
+      width: 36%;
+      text-align: left;
+      font-weight: normal;
+    }
+
+    .meta-right {
+      width: 64%;
+      text-align: right;
+      font-weight: bold;
+    }
+
+    h1 {
+      margin: 0 0 12pt 0;
+      text-align: center;
+      font-size: 13pt;
+      font-style: italic;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    p {
+      margin: 0 0 9pt 0;
+      text-align: justify;
+    }
+
+    .autoridad {
+      margin-top: 0;
+      margin-bottom: 10pt;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .firmas-table {
+      margin-top: 28pt;
+      page-break-inside: avoid;
+    }
+
+    .firma-cell {
+      width: 50%;
+      text-align: center;
+      padding: 0 16pt;
+      vertical-align: top;
+    }
+
+    .firma-cell p {
+      text-align: center;
+      margin: 0 0 6pt 0;
+    }
+
+    .firma-espacio {
+      height: 42pt;
+    }
+
+    .firma-manuscrita {
+      display: block;
+      width: 145px;
+      max-width: 145px;
+      height: auto;
+      max-height: 55px;
+      margin: 0 auto 2pt auto;
+      object-fit: contain;
+    }
+
+    .slogan {
+      margin-top: 28pt;
+      text-align: center;
+      font-size: 9.5pt;
+      font-weight: bold;
+    }
   `;
 }
 
@@ -465,152 +625,21 @@ function construirDocumentoCompleto(form: FormState) {
 
   return `
     <!DOCTYPE html>
-    <html lang="es">
+    <html lang="es" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
       <head>
         <meta charset="utf-8" />
         <title>Poder Especial</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
         <style>
-          @page {
-            size: legal;
-            margin: 0.85in 0.85in 0.85in 0.85in;
-          }
-
-          body {
-            margin: 0;
-            background: #ffffff;
-            color: #111827;
-            font-family: "Times New Roman", Times, serif;
-            font-size: 12pt;
-            line-height: 1.42;
-          }
-
-          .documento {
-            width: 8.5in;
-            min-height: 14in;
-            margin: 0 auto;
-            background: #ffffff;
-          }
-
-          .letterhead {
-            margin-bottom: 26px;
-            font-size: 9pt;
-            line-height: 1.25;
-          }
-
-          .logo-center {
-            text-align: center;
-            margin-bottom: 10px;
-          }
-
-          .logo-firma {
-            display: inline-block;
-            max-width: 390px;
-            max-height: 110px;
-            object-fit: contain;
-          }
-
-          .logo-texto {
-            display: inline-block;
-            font-size: 20pt;
-            font-weight: bold;
-            letter-spacing: 7px;
-            color: #111827;
-            text-transform: uppercase;
-          }
-
-          .membrete-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 26px;
-            width: 100%;
-          }
-
-          .membrete-left {
-            text-align: left;
-          }
-
-          .membrete-right {
-            text-align: right;
-          }
-
-          .datos-superiores {
-            display: grid;
-            grid-template-columns: 0.85fr 1.15fr;
-            gap: 28px;
-            align-items: start;
-            margin-bottom: 24px;
-            font-size: 11pt;
-          }
-
-          .carpetilla {
-            text-align: left;
-            font-weight: normal;
-          }
-
-          .descripcion-investigacion {
-            text-align: right;
-            font-weight: bold;
-            line-height: 1.35;
-          }
-
-          h1 {
-            text-align: center;
-            font-size: 16pt;
-            font-style: italic;
-            font-weight: normal;
-            margin: 0 0 24px 0;
-            text-decoration: none;
-          }
-
-          p {
-            margin: 0 0 14px 0;
-            text-align: justify;
-          }
-
-          .autoridad {
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-top: 8px;
-            margin-bottom: 16px;
-          }
-
-          .firmas {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 52px;
-            margin-top: 48px;
-          }
-
-          .firma-bloque {
-            text-align: center;
-          }
-
-          .firma-bloque p {
-            text-align: center;
-            margin-bottom: 8px;
-          }
-
-          .firma-manuscrita {
-            display: block;
-            max-width: 180px;
-            max-height: 75px;
-            object-fit: contain;
-            margin: 4px auto 0 auto;
-          }
-
-          .linea {
-            border-top: 1px solid #111827;
-            height: 1px;
-            margin: 42px auto 8px auto;
-            width: 85%;
-          }
-
-          footer {
-            text-align: center;
-            font-size: 10pt;
-            font-weight: bold;
-            margin-top: 64px;
-          }
+          ${estilosDocumento()}
         </style>
       </head>
       <body>
@@ -692,6 +721,8 @@ export default function EscritosPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      <style>{estilosDocumento()}</style>
+
       <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <Link
@@ -742,7 +773,7 @@ export default function EscritosPage() {
 
           <Card
             title="2. Branding de la firma"
-            description="Datos que aparecerán en el membrete y en la aceptación del poder."
+            description="Datos del membrete y aceptación del poder."
           >
             <div>
               <FieldLabel>Nombre de la firma</FieldLabel>
@@ -1053,7 +1084,7 @@ export default function EscritosPage() {
 
           <Card
             title="6. Carpetilla e investigación"
-            description="Esta información aparece debajo del membrete: carpetilla a la izquierda y descripción del proceso a la derecha."
+            description="Aparece debajo del membrete: carpetilla izquierda, descripción derecha."
           >
             <div>
               <FieldLabel>Número de carpetilla</FieldLabel>
@@ -1072,7 +1103,7 @@ export default function EscritosPage() {
                   update("descripcionInvestigacion", value)
                 }
                 rows={5}
-                placeholder="Ejemplo: Investigación seguida a ______ por la comisión de un delito contra ______ en perjuicio de ______."
+                placeholder="Ejemplo: Querella en contra de Juan Bravo por la supuesta comisión de un delito contra la fe pública en perjuicio de Rodrigo Fonseca."
               />
             </div>
 
@@ -1081,7 +1112,7 @@ export default function EscritosPage() {
               <TextInput
                 value={form.tipoProceso}
                 onChange={(value) => update("tipoProceso", value)}
-                placeholder="Investigación seguida"
+                placeholder="Querella / Investigación seguida"
               />
             </div>
 
@@ -1176,8 +1207,8 @@ export default function EscritosPage() {
                 className="mt-1"
               />
               <span>
-                Incluir facultades para interponer recursos, presentar
-                solicitudes y promover acciones legales.
+                Incluir facultades para interponer recursos y presentar
+                solicitudes.
               </span>
             </label>
 
@@ -1247,8 +1278,7 @@ export default function EscritosPage() {
           >
             <div className="overflow-auto rounded-xl bg-white p-4 text-slate-950">
               <div
-                className="mx-auto min-h-[1344px] max-w-[816px] bg-white p-8 text-[12pt] leading-relaxed shadow-2xl"
-                style={{ fontFamily: "Times New Roman, Times, serif" }}
+                className="mx-auto min-h-[1344px] w-[816px] bg-white p-8 shadow-2xl"
                 dangerouslySetInnerHTML={{ __html: documentoHtml }}
               />
             </div>
