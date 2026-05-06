@@ -1,7 +1,19 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Scale, Clock, Calculator, FileText, Calendar, ShieldAlert } from "lucide-react";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Scale,
+  Clock,
+  Calculator,
+  FileText,
+  Calendar,
+  ShieldAlert,
+} from "lucide-react";
 
 export default function Home() {
   // Estados semánticos reemplazando true/false
@@ -21,12 +33,23 @@ export default function Home() {
               FlowPenal <span className="text-gold">by Lex Vence</span>
             </h1>
           </div>
+
           <nav className="flex gap-4">
             <Link href="/brand">
-              <Button variant="ghost" className="text-foreground hover:text-gold">Mi Marca</Button>
+              <Button
+                variant="ghost"
+                className="text-foreground hover:text-gold"
+              >
+                Mi Marca
+              </Button>
             </Link>
             <Link href="/docs">
-              <Button variant="ghost" className="text-foreground hover:text-gold">Documentos</Button>
+              <Button
+                variant="ghost"
+                className="text-foreground hover:text-gold"
+              >
+                Documentos
+              </Button>
             </Link>
           </nav>
         </div>
@@ -38,10 +61,12 @@ export default function Home() {
           <h2 className="text-4xl md:text-5xl font-poppins font-bold text-foreground leading-tight">
             Herramienta Jurídica Profesional
           </h2>
+
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Cálculo de penas, prescripción penal, liquidación y generación de escritos
-            con branding profesional para abogados en Panamá.
+            Cálculo de penas, prescripción penal, liquidación y generación de
+            escritos con branding profesional para abogados en Panamá.
           </p>
+
           <div className="pt-4">
             <Button
               size="lg"
@@ -57,7 +82,6 @@ export default function Home() {
       {/* Modules Grid */}
       <section id="modules" className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-
           {/* Recursos y Términos */}
           <Link href="/recursos">
             <Card className="border-border-gray bg-card hover:border-gold transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
@@ -65,12 +89,15 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
                   <Calendar className="w-6 h-6 text-gold" />
                 </div>
+
                 <CardTitle className="text-2xl font-poppins font-bold text-foreground">
                   Recursos y Términos
                 </CardTitle>
+
                 <CardDescription className="text-base text-muted-foreground mt-2">
-                  Calcule plazos exactos para recursos de anulación y casación con cómputo
-                  de días hábiles y calendario detallado (CPP 437, 441).
+                  Calcule plazos exactos para recursos de anulación y casación
+                  con cómputo de días hábiles y calendario detallado conforme a
+                  los CPP Arts. 175, 181 y 185.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -83,12 +110,15 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
                   <Calculator className="w-6 h-6 text-gold" />
                 </div>
+
                 <CardTitle className="text-2xl font-poppins font-bold text-foreground">
                   Cálculo de Penas
                 </CardTitle>
+
                 <CardDescription className="text-base text-muted-foreground mt-2">
-                  Calcule penas con agravantes, atenuantes, tentativa, confesión y concursos.
-                  Determine subrogados penales aplicables según el Código Penal.
+                  Calcule penas con agravantes, atenuantes, tentativa, confesión
+                  y concursos. Determine subrogados penales aplicables según el
+                  Código Penal.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -96,17 +126,20 @@ export default function Home() {
 
           {/* Prescripción Penal */}
           <Link href="/prescripcion">
-            <Card className="border-border-gray bg-card hover:border-blue-lex transition-all duración-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
+            <Card className="border-border-gray bg-card hover:border-blue-lex transition-all duration-300 shadow-soft hover:shadow-glow cursor-pointer h-full group">
               <CardHeader>
                 <div className="w-12 h-12 bg-blue-lex/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-lex/20 transition-colors">
                   <Clock className="w-6 h-6 text-blue-lex" />
                 </div>
+
                 <CardTitle className="text-2xl font-poppins font-bold text-foreground">
                   Prescripción Penal
                 </CardTitle>
+
                 <CardDescription className="text-base text-muted-foreground mt-2">
-                  Determine plazos de prescripción según CPP o CJ (sistema inquisitivo).
-                  Incluye suspensiones, interrupciones y cómputo por distrito.
+                  Determine plazos de prescripción según CPP o CJ sistema
+                  inquisitivo. Incluye suspensiones, interrupciones y cómputo
+                  por distrito.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -119,12 +152,14 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
                   <Scale className="w-6 h-6 text-gold" />
                 </div>
+
                 <CardTitle className="text-2xl font-poppins font-bold text-foreground">
                   Liquidación de Pena
                 </CardTitle>
+
                 <CardDescription className="text-base text-muted-foreground mt-2">
-                  Calcule ½ y ⅔ de pena con abonos de medidas cautelares (CPP 232)
-                  y conmutación por trabajo, estudio y conducta (CP 99-104).
+                  Calcule ½ y ⅔ de pena con abonos de medidas cautelares CPP
+                  232 y conmutación por trabajo, estudio y conducta CP 99-104.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -137,12 +172,15 @@ export default function Home() {
                 <div className="w-12 h-12 bg-blue-lex/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-lex/20 transition-colors">
                   <FileText className="w-6 h-6 text-blue-lex" />
                 </div>
+
                 <CardTitle className="text-2xl font-poppins font-bold text-foreground">
                   Generador de Escritos
                 </CardTitle>
+
                 <CardDescription className="text-base text-muted-foreground mt-2">
-                  Genere escritos profesionales (imputación, recursos, querellas) con
-                  su branding personalizado y fundamento legal automático.
+                  Genere escritos profesionales de imputación, recursos y
+                  querellas con su branding personalizado y fundamento legal
+                  automático.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -155,17 +193,19 @@ export default function Home() {
                 <div className="w-12 h-12 bg-gold/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-gold/20 transition-colors">
                   <ShieldAlert className="w-6 h-6 text-gold" />
                 </div>
+
                 <CardTitle className="text-2xl font-poppins font-bold text-foreground">
                   Riesgos Procesales y Medidas Cautelares
                 </CardTitle>
+
                 <CardDescription className="text-base text-muted-foreground mt-2">
-                  Matriz de riesgos (fuga, obstaculización, peligro a la víctima/comunidad), puntaje de arraigo y
-                  conclusiones según rol. Exporta informe en PDF/DOC.
+                  Matriz de riesgos de fuga, obstaculización y peligro a la
+                  víctima o comunidad, puntaje de arraigo y conclusiones según
+                  rol. Exporta informe en PDF/DOC.
                 </CardDescription>
               </CardHeader>
             </Card>
           </Link>
-
         </div>
       </section>
 
@@ -173,11 +213,18 @@ export default function Home() {
       <footer className="border-t border-border-gray mt-24 py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground text-sm">
           <p>
-            © 2025 <span className="text-gold font-semibold">FlowPenal by Lex Vence</span> | Herramienta Jurídica Profesional
+            © 2025{" "}
+            <span className="text-gold font-semibold">
+              FlowPenal by Lex Vence
+            </span>{" "}
+            | Herramienta Jurídica Profesional
           </p>
+
           <p className="mt-2">Panamá • Sistema Penal Acusatorio</p>
+
           <p className="mt-2 text-xs text-slate-500">
-            Acceso autorizado: {accesoAutorizado} | Modo mantenimiento: {modoMantenimiento}
+            Acceso autorizado: {accesoAutorizado} | Modo mantenimiento:{" "}
+            {modoMantenimiento}
           </p>
         </div>
       </footer>
